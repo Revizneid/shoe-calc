@@ -118,6 +118,7 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .cfg-a{background:var(--surf2);color:var(--tx2);border:1px solid var(--bd)}
 .mname{font-weight:600;font-size:13px}
 .mcolor{font-size:11px;color:var(--tx3);margin-top:1px}
+.mcolor-eng{font-size:12px;font-weight:600;color:var(--tx2);letter-spacing:.01em}
 .meng{font-size:11px;color:var(--tx2);margin-top:2px;font-weight:500;font-style:italic}
 .mnote{font-size:11px;color:var(--tx2);margin-top:3px;font-style:italic}
 .big{font-weight:700;font-size:14px}
@@ -775,11 +776,12 @@ function render() {
       </td>
       <td>
         <div class="mname">${m.matName}</div>
-        ${m.engName?`<div class="meng">${m.engName}</div>`:''}
+        ${m.engName ? `<div class="meng">${m.engName}</div>` : ''}
       </td>
       <td>
-        <div class="mcolor">${m.color}</div>
-        ${m.engColor ? `<div style="font-size:11px;font-weight:600;color:var(--tx2);margin-top:2px;letter-spacing:.01em">${m.engColor}</div>` : ''}
+        ${m.engColor
+          ? `<div class="mcolor-eng">${m.engColor}</div><div class="mcolor">${m.color}</div>`
+          : `<div class="mcolor">${m.color}</div>`}
       </td>
       <td style="font-size:12px;color:var(--tx2);white-space:nowrap">${m.spec||'—'}</td>
       <td class="r">
@@ -1426,11 +1428,15 @@ function runFromData(poData, bomData) {
     return;
   }
 
-  // Expand multi-cfg BOM rows + attach English color from PO codes
+  // Expand multi-cfg BOM rows + attach English color
+  // Priority: engColor from Gemini BOM → fallback to first token of PO color code
   bom.mats = expandMaterials(bom.mats, po.colors);
   const colorEngMap = {};
   po.colors.forEach(c => { colorEngMap[c.id] = c.code.split('/')[0].trim(); });
-  bom.mats = bom.mats.map(m => ({ ...m, engColor: colorEngMap[m.cfg] || '' }));
+  bom.mats = bom.mats.map(m => ({
+    ...m,
+    engColor: m.engColor || colorEngMap[m.cfg] || ''
+  }));
 
   S = { po, bom, colors: po.colors.map(c => ({ ...c })) };
 
