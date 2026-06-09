@@ -150,7 +150,14 @@ export default async function handler(req, res) {
     });
   }
 
-  const geminiData = await geminiResp.json();
+  // ── Parse Gemini HTTP response (guard against non-JSON body) ─────────────────
+  let geminiData;
+  try {
+    geminiData = await geminiResp.json();
+  } catch (e) {
+    const txt = await geminiResp.text().catch(() => '(unreadable)');
+    return res.status(502).json({ error: `Gemini trả về body không phải JSON: ${txt.slice(0, 200)}` });
+  }
 
   // ── Extract text from Gemini response ──────────────────────────────────────
   const rawText = geminiData?.candidates?.[0]?.content?.parts
@@ -159,7 +166,9 @@ export default async function handler(req, res) {
     ?.join('') || '';
 
   if (!rawText) {
-    return res.status(502).json({ error: 'Gemini trả về response rỗng. Kiểm tra lại file PDF.' });
+    // Surface Gemini-level error if present
+    const gemErr = geminiData?.error?.message || geminiData?.candidates?.[0]?.finishReason || 'response rỗng';
+    return res.status(502).json({ error: `Gemini: ${gemErr}. Kiểm tra lại file PDF.` });
   }
 
   // ── Parse JSON (strip markdown fences nếu có) ──────────────────────────────
@@ -168,10 +177,10 @@ export default async function handler(req, res) {
   try {
     parsed = JSON.parse(clean);
   } catch (e) {
-    console.error('Raw Gemini response:', rawText);
+    console.error('Raw Gemini response:', rawText.slice(0, 1000));
     return res.status(422).json({
-      error: `Gemini trả về JSON không hợp lệ: ${e.message}`,
-      raw: rawText.slice(0, 500)
+      error: `Gemini trả về JSON không hợp lệ: ${e.message}. Thử lại hoặc kiểm tra file PDF.`,
+      raw: rawText.slice(0, 300)
     });
   }
 
