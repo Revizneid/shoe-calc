@@ -3,7 +3,7 @@
 
 export const config = { maxDuration: 60 };
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
 const PROMPT = `Đây là 2 tài liệu sản xuất giày (tiếng Trung):
 - Document 1: Đơn sản xuất (生产单) — bảng màu sắc và vật liệu
