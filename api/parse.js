@@ -28,15 +28,18 @@ Hãy trích xuất dữ liệu và trả về DUY NHẤT một JSON object. Khô
     "orderNo": "factory order no if present",
     "model":   "model code if present",
     "mats": [
-      { "cfg":     "config codes e.g. '1' or '1+2+3'",
-        "part":    "part name Chinese (部位)",
-        "matName": "material name Chinese",
-        "engName": "English material name if present in cell (after '/')",
-        "color":   "color(s), '/' between multiple",
-        "spec":    "thickness/spec e.g. '1.3-1.5MM'",
-        "perPair": consumption_number,
-        "unit":    "SF or m² or yd",
-        "note":    "notes if any" }
+      {
+        "cfg":      "config codes e.g. '1' or '1+2+3'",
+        "part":     "part name in Chinese only (部位)",
+        "matName":  "material name in Chinese only — do NOT include English. E.g. '斯普伦多牛皮/SPLENDOR CALF' → '斯普伦多牛皮'",
+        "engName":  "English material name only, extracted from after '/' in the material cell. E.g. '斯普伦多牛皮/SPLENDOR CALF' → 'SPLENDOR CALF'. Empty string if none.",
+        "color":    "color in Chinese only. E.g. '黑色/BLACK' → '黑色', '自然色/黑色' → '自然色/黑色'",
+        "engColor": "English color only, extracted from after '/' in color cell. E.g. '黑色/BLACK' → 'BLACK', '浅奶黄色/LIGHT CREAM' → 'LIGHT CREAM'. If multiple colors '自然色/黑色' → 'NATURAL/BLACK'. Empty string if none.",
+        "spec":     "thickness/spec e.g. '1.3-1.5MM'",
+        "perPair":  consumption_number,
+        "unit":     "SF or m2 or yd",
+        "note":     "notes if any"
+      }
     ]
   }
 }
@@ -46,6 +49,8 @@ Quy tắc:
   Nếu không đọc được thì qty:0, qtyMissing:true
 - cfg trong mats: nếu 1 hàng rowspan nhiều hàng thì lặp lại cfg đó
 - perPair: ưu tiên SF/对 > m²/对 > yd/对 > 目标用量SF
+- matName và engName: tách rõ phần tiếng Trung và tiếng Anh tại dấu '/'
+- color và engColor: tách rõ tương tự — tiếng Trung vào color, tiếng Anh vào engColor
 - Chỉ trả hàng có matName và perPair > 0
 - Trả về JSON thuần, không có \`\`\``;
 
