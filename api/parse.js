@@ -106,21 +106,47 @@ export default async function handler(req, res) {
     }
   };
 
-  let geminiResp;
-  try {
-    geminiResp = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(geminiBody)
-    });
-  } catch (e) {
-    return res.status(502).json({ error: 'Không kết nối được Gemini API: ' + e.message });
-  }
+  // ── Retry với exponential backoff (503/429/500 retry tối đa 4 lần) ──────────
+  const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+  const MAX_TRIES = 4;
+  let geminiResp, lastErr;
 
-  if (!geminiResp.ok) {
+  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
+    try {
+      geminiResp = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(geminiBody)
+      });
+    } catch (e) {
+      lastErr = e.message;
+      if (attempt < MAX_TRIES) {
+        await new Promise(r => setTimeout(r, 2000 * attempt));
+        continue;
+      }
+      return res.status(502).json({ error: 'Không kết nối được Gemini API: ' + e.message });
+    }
+
+    if (geminiResp.ok) break;
+
+    if (RETRYABLE.has(geminiResp.status) && attempt < MAX_TRIES) {
+      const wait = 2000 * attempt; // 2s, 4s, 6s
+      console.log(`Gemini ${geminiResp.status} — retry ${attempt}/${MAX_TRIES - 1} sau ${wait}ms`);
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+
+    // Lỗi không retry được (400, 401, 403, 422...)
     const errText = await geminiResp.text();
     return res.status(geminiResp.status).json({
       error: `Gemini API lỗi ${geminiResp.status}: ${errText.slice(0, 300)}`
+    });
+  }
+
+  if (!geminiResp || !geminiResp.ok) {
+    const errText = geminiResp ? await geminiResp.text() : lastErr;
+    return res.status(503).json({
+      error: `Gemini quá tải sau ${MAX_TRIES} lần thử. Vui lòng thử lại sau ít phút.`
     });
   }
 
