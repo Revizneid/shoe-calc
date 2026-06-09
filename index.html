@@ -1399,22 +1399,40 @@ function runFromData(poData, bomData) {
       .map(c => String(c.id))
   };
 
+  // ── Helper: tách "中文名/ENGLISH NAME" → { zh, en } ──────────────────────
+  function splitZhEn(str) {
+    if (!str) return { zh: '', en: '' };
+    // Tìm vị trí '/' đầu tiên mà sau nó có ký tự Latin (A-Z)
+    const m = str.match(/^([\s\S]*?)\/([A-Z][A-Z0-9 \-().,'&]+)/);
+    if (m) return { zh: m[1].trim(), en: m[2].trim() };
+    // Không tìm thấy → kiểm tra toàn bộ string có phải ASCII không
+    if (/^[A-Za-z0-9 \-().,'&%\/]+$/.test(str.trim())) return { zh: '', en: str.trim() };
+    return { zh: str.trim(), en: '' };
+  }
+
   const bom = {
     orderNo: bomData.orderNo || '',
     model:   bomData.model   || '',
     mats: (bomData.mats || [])
       .filter(m => parseFloat(m.perPair) > 0 && m.matName)
-      .map(m => ({
-        cfg:     String(m.cfg),
-        part:    m.part    || '',
-        matName: m.matName || '',
-        engName: m.engName || '',
-        color:   m.color   || '',
-        spec:    m.spec    || '',
-        perPair: parseFloat(m.perPair),
-        unit:    m.unit    || 'SF',
-        note:    m.note    || ''
-      }))
+      .map(m => {
+        // Nếu Gemini đã tách sẵn thì dùng, không thì tự tách từ matName gốc
+        const matSplit  = splitZhEn(m.matName || '');
+        const colSplit  = splitZhEn(m.color   || '');
+        const engName   = m.engName  || matSplit.en;
+        const matName   = matSplit.zh || matSplit.en || m.matName || '';
+        const engColor  = m.engColor || colSplit.en;
+        const color     = colSplit.zh || colSplit.en || m.color   || '';
+        return {
+          cfg:     String(m.cfg),
+          part:    m.part    || '',
+          matName, engName, color, engColor,
+          spec:    m.spec    || '',
+          perPair: parseFloat(m.perPair),
+          unit:    m.unit    || 'SF',
+          note:    m.note    || ''
+        };
+      })
   };
 
   if (!po.colors.length) {
