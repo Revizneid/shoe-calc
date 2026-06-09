@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Material Calculator · Shoe Production</title>
+<style>
+:root {
+  --bg:#f5f4f0; --surf:#fff; --surf2:#f0ede6; --bd:rgba(0,0,0,.11);
+  --bd2:rgba(0,0,0,.2); --bd3:rgba(0,0,0,.35);
+  --tx:#1a1916; --tx2:#5a5750; --tx3:#9a9890;
+  --blue:#1a3d6e; --blue-bg:#e6eef8;
+  --pink:#6b1a50; --pink-bg:#faeef5;
+  --green:#1e4a1a; --green-bg:#e8f5e6;
+  --amber:#6b3d00; --amber-bg:#fef3dc;
+  --red:#6b1a1a; --red-bg:#faeaea;
+  --r:6px; --rl:10px;
+  font-family:'Segoe UI',system-ui,sans-serif; font-size:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);line-height:1.5;min-height:100vh}
+a{color:var(--blue)}
+.app{max-width:1160px;margin:0 auto;padding:0 20px 60px}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 0;
+  border-bottom:2px solid var(--tx);margin-bottom:28px}
+.nav-title{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.nav-badge{font-size:11px;color:var(--tx3);background:var(--surf2);
+  border:1px solid var(--bd2);padding:3px 9px;border-radius:20px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:var(--r);
+  font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid;transition:all .15s}
+.btn-primary{background:var(--tx);color:#fff;border-color:var(--tx)}
+.btn-primary:hover{background:#333}
+.btn-ghost{background:var(--surf);color:var(--tx);border-color:var(--bd2)}
+.btn-ghost:hover{background:var(--surf2)}
+.btn-sm{padding:6px 13px;font-size:12px}
+
+/* IMPORT */
+.import-intro{font-size:13px;color:var(--tx2);margin-bottom:18px;line-height:1.7}
+.import-intro strong{color:var(--tx)}
+.import-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.ipanel{background:var(--surf);border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden}
+.ipanel-head{padding:10px 14px;background:var(--surf2);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;gap:10px}
+.itag{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--tx);color:#fff;padding:2px 7px;border-radius:3px}
+.ilabel{font-size:13px;font-weight:600}
+.ipanel textarea{width:100%;height:190px;padding:12px 14px;border:none;resize:vertical;
+  font-family:'Courier New',monospace;font-size:11.5px;line-height:1.5;
+  color:var(--tx);background:transparent;outline:none}
+.ipanel textarea::placeholder{color:var(--tx3)}
+.istatus{padding:6px 14px;font-size:12px;min-height:30px;display:flex;align-items:center;gap:5px}
+.ok{color:var(--green);background:var(--green-bg)}
+.err{color:var(--red);background:var(--red-bg)}
+.warn{color:var(--amber);background:var(--amber-bg)}
+.import-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* RESULTS */
+.results{display:none}
+.order-bar{background:var(--tx);color:#fff;border-radius:var(--rl);
+  padding:14px 20px;display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-bottom:18px}
+.ofield-label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#888;
+  font-weight:600;margin-bottom:3px}
+.ofield-val{font-size:14px;font-weight:600;color:#fff}
+.ofield-val.lg{font-size:22px;letter-spacing:-.02em}
+
+/* STAT CARDS */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));
+  gap:10px;margin-bottom:20px}
+.scard{background:var(--surf);border:1px solid var(--bd);border-radius:var(--rl);padding:13px 15px}
+.scard-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--tx3);font-weight:600;margin-bottom:5px}
+.scard-val{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.scard-sub{font-size:12px;color:var(--tx2);margin-top:2px}
+
+/* SECTION */
+.sec{margin-bottom:22px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--tx2);display:flex;align-items:center;gap:8px}
+.sec-title::before{content:'';display:block;width:3px;height:13px;
+  background:var(--tx);border-radius:2px}
+
+/* COLOR CARDS */
+.clr-list{display:flex;flex-direction:column;gap:9px}
+.clr-card{background:var(--surf);border:1px solid var(--bd);border-radius:var(--rl);
+  padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.clr-dot{width:30px;height:30px;border-radius:50%;border:1px solid rgba(0,0,0,.15);flex-shrink:0}
+.clr-info{flex:1;min-width:0}
+.clr-id{font-size:13px;font-weight:700}
+.clr-code{font-size:11px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qty-wrap{display:flex;align-items:center;gap:8px}
+.qty-wrap label{font-size:12px;color:var(--tx2);white-space:nowrap}
+.qty-inp{width:82px;padding:6px 10px;border:1px solid var(--bd2);border-radius:var(--r);
+  font-size:15px;font-weight:700;text-align:right;background:var(--bg);outline:none}
+.qty-inp:focus{border-color:var(--tx)}
+.qty-unit{font-size:12px;color:var(--tx2)}
+
+/* TABLE */
+.twrap{background:var(--surf);border:1px solid var(--bd);border-radius:var(--rl);overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:var(--surf2);padding:9px 11px;text-align:left;font-size:11px;
+  font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);
+  border-bottom:1.5px solid var(--bd2);white-space:nowrap}
+thead th.r{text-align:right}
+tbody tr{border-bottom:1px solid var(--bd)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#faf9f6}
+td{padding:10px 11px;vertical-align:top}
+td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cfg{display:inline-block;padding:2px 8px;border-radius:4px;
+  font-size:11px;font-weight:700;letter-spacing:.03em}
+.cfg-1{background:var(--blue-bg);color:var(--blue)}
+.cfg-2{background:var(--pink-bg);color:var(--pink)}
+.cfg-a{background:var(--surf2);color:var(--tx2);border:1px solid var(--bd)}
+.mname{font-weight:600;font-size:13px}
+.mcolor{font-size:11px;color:var(--tx3);margin-top:1px}
+.meng{font-size:11px;color:var(--tx2);margin-top:2px;font-weight:500;font-style:italic}
+.mnote{font-size:11px;color:var(--tx2);margin-top:3px;font-style:italic}
+.big{font-weight:700;font-size:14px}
+.sub{font-size:11px;color:var(--tx3)}
+.utag{font-size:11px;color:var(--tx3);margin-left:2px}
+tfoot td{background:var(--surf2);font-weight:700;padding:10px 11px;
+  border-top:1.5px solid var(--bd2);font-size:13px}
+
+/* ALERTS */
+.pdf-pick-row{display:flex;align-items:center;gap:10px;padding:10px 14px 6px}
+.pdf-pick-name{font-size:12px;color:var(--tx3);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pdf-pick-name.loaded{color:var(--green);font-weight:600}
+.or-sep{font-size:11px;color:var(--tx3);text-align:center;padding:4px 0;
+  position:relative;margin:0 14px}
+.or-sep::before,.or-sep::after{content:'';position:absolute;top:50%;width:40%;
+  height:1px;background:var(--bd2)}
+.or-sep::before{left:0}.or-sep::after{right:0}
+.ai-btn-row{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+.ai-status{font-size:12px;color:var(--tx3)}
+.alert{border-radius:var(--r);padding:9px 13px;font-size:12px;
+  line-height:1.6;margin-top:10px;display:flex;gap:7px}
+.alert-info{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(26,61,110,.2)}
+.pdf-upload-row{margin-bottom:16px}
+.pdf-qty-table{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pdf-qty-chip{background:var(--surf2);border:1px solid var(--bd2);border-radius:4px;
+  padding:3px 7px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px}
+.pdf-qty-chip.ocr{border-color:var(--blue)}
+.pdf-qty-chip .chip-lbl{color:var(--tx2);font-weight:500;font-size:10px}
+.pdf-qty-chip input[type=number]{width:60px;background:var(--surf);border:1px solid var(--bd2);
+  border-radius:3px;color:var(--blue);font-weight:700;font-size:12px;padding:1px 4px;
+  text-align:right;-moz-appearance:textfield}
+.pdf-qty-chip input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+
+/* PRINT */
+@media print{
+  .import-section,.no-print{display:none!important}
+  .results{display:block!important}
+  body{background:#fff}
+}
+@media(max-width:640px){
+  .import-grid{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<nav class="nav">
+  <span class="nav-title">Material Calculator · Shoe Production</span>
+  <span class="nav-badge">Stage 2 · AI PDF parsing</span>
+</nav>
+
+<!-- ── IMPORT ── -->
+<section class="import-section" id="sec-import">
+  <p class="import-intro">
+    <strong>Mới:</strong> Upload trực tiếp file PDF — AI tự đọc cả đơn sản xuất lẫn BOM, không cần qua ocr.z.ai.<br>
+    <span style="color:var(--tx3)">Hoặc dùng cách cũ: paste nội dung .md vào ô bên dưới.</span>
+  </p>
+  <div class="import-grid">
+    <div class="ipanel">
+      <div class="ipanel-head">
+        <span class="itag">FILE 1</span>
+        <span class="ilabel">Production Order (生产单)</span>
+      </div>
+      <div class="pdf-pick-row">
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+          📄 Chọn PDF
+          <input type="file" accept="application/pdf,.pdf" style="display:none"
+                 onchange="handlePOPdf(this)">
+        </label>
+        <span id="po-pdf-name" class="pdf-pick-name">Chưa chọn file</span>
+      </div>
+      <div class="or-sep">hoặc paste .md</div>
+      <textarea id="ta-po" spellcheck="false"
+        placeholder="Paste Production Order .md content here…"></textarea>
+      <div class="istatus" id="st-po"></div>
+    </div>
+    <div class="ipanel">
+      <div class="ipanel-head">
+        <span class="itag">FILE 2</span>
+        <span class="ilabel">BOM · Material Usage (主面料用量表)</span>
+      </div>
+      <div class="pdf-pick-row">
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+          📄 Chọn PDF
+          <input type="file" accept="application/pdf,.pdf" style="display:none"
+                 onchange="handleBOMPdf(this)">
+        </label>
+        <span id="bom-pdf-name" class="pdf-pick-name">Chưa chọn file</span>
+      </div>
+      <div class="or-sep">hoặc paste .md</div>
+      <textarea id="ta-bom" spellcheck="false"
+        placeholder="Paste BOM .md content here…"></textarea>
+      <div class="istatus" id="st-bom"></div>
+    </div>
+  </div>
+  <!-- Image OCR for extracting color quantities -->
+  <div class="pdf-upload-row">
+    <div class="ipanel" style="flex:1">
+      <div class="ipanel-head">
+        <span class="itag" style="background:var(--blue)">OPT</span>
+        <span class="ilabel">Ảnh đơn sản xuất
+          <span style="font-size:11px;color:var(--tx3);font-weight:400"> — upload ảnh PO để tự đọc số lượng từng màu</span>
+        </span>
+      </div>
+      <div style="padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+          📷 Chọn ảnh PO
+          <input type="file" id="pdf-input" accept="image/*" multiple style="display:none" onchange="handlePDFUpload(this)">
+        </label>
+        <span id="pdf-status" style="font-size:12px;color:var(--tx3)">Chưa chọn file</span>
+        <button class="btn btn-ghost btn-sm" id="pdf-read-btn" style="display:none" onclick="extractQtyFromPDF()">
+          🔍 Đọc số lượng (OCR)
+        </button>
+      </div>
+      <div id="pdf-result" style="padding:0 14px 10px;font-size:12px;color:var(--tx2);display:none"></div>
+    </div>
+  </div>
+  <div class="ai-btn-row">
+    <button id="ai-parse-btn" class="btn btn-primary" onclick="runFromPDF()">
+      🤖 AI Parse PDF
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="run()" title="Dùng khi đã paste .md vào ô trên">
+      Parse .md →
+    </button>
+    <button class="btn btn-ghost btn-sm no-print" onclick="loadDemo()">Load Demo</button>
+    <span id="ai-status" class="ai-status"></span>
+    <span id="global-err" style="font-size:12px;color:var(--red)"></span>
+  </div>
+</section>
+
+<!-- ── RESULTS ── -->
+<section class="results" id="sec-results">
+  <div class="order-bar" id="order-bar"></div>
+  <div class="stats" id="stat-cards"></div>
+
+  <div class="sec">
+    <div class="sec-head">
+      <div class="sec-title">Color Quantities</div>
+      <span style="font-size:12px;color:var(--tx3)">Edit to recalculate in real time</span>
+    </div>
+    <div class="clr-list" id="clr-list"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head">
+      <div class="sec-title">Material Requirements</div>
+      <div style="display:flex;gap:8px" class="no-print">
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
+        <button class="btn btn-ghost btn-sm" onclick="goBack()">← Re-import</button>
+      </div>
+    </div>
+    <div class="twrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Config</th>
+            <th>Part / Application</th>
+            <th>Material</th>
+            <th>Color</th>
+            <th>Spec</th>
+            <th class="r">Per Pair</th>
+            <th class="r">Qty (pairs)</th>
+            <th class="r">Total Required</th>
+          </tr>
+        </thead>
+        <tbody id="mat-tbody"></tbody>
+        <tfoot id="mat-tfoot"></tfoot>
+      </table>
+    </div>
+    <div class="alert alert-info">
+      ⓘ BOM quantities already include yield/usage rate.
+      <strong>Total Required = Per Pair × Applicable Pairs</strong> — no additional factor applied.
+    </div>
+  </div>
+</section>
+
+</div><!-- .app -->
+
+<script>
+// ═══════════════════════ DEMO DATA ═══════════════════════
+const DEMO_PO = `无钉作业
+
+生产厂：WS3
+
+<div align="center">
+
+生产单
+
+</div>
+
+★新配色新材质 ☆新配色旧材质
+
+编号:PPW-QR-YW-01-A/0
+
+新单
+
+会议单
+
+印表日期：2026-05-26 5:18:09 PM
+
+<table class="table table-bordered"><thead><tr><th colspan="3">厂单编号及顾客名称</th><th colspan="6">订单号</th><th colspan="5">备注说明</th><th colspan="2">鞋图</th></tr></thead><tbody><tr><td rowspan="2" colspan="3">厂单号: VMK26050389</td><td colspan="6">A单 60双 11 BRAZIL (09-02)</td><td rowspan="14" colspan="8">SIZE尺码:5~12M<br>植头编号:MK-WINNIE-75-2023(旧)<br>鞋跟编号:WINNIE-75-H(旧)<br>大底编号:WINNIE-75-B(旧)<br>Women's Mainline</td></tr><tr><td colspan="6">B单 174双 12 PANAMA (09-02)</td></tr><tr><td rowspan="3" colspan="3">型体号码: MK22005</td><td colspan="6">C单 4410双 31 EU WHSL (09-02)</td></tr><tr><td colspan="6">D单 220双 07 US WHSL 美国 (09-09)</td></tr><tr><td colspan="6">DA单 108双 07 US WHSL 美国 (09-09)</td></tr><tr><td rowspan="3" colspan="3">款名: ALINA FLEX PUMP</td><td colspan="6">E单 53双 62 INDONESIA (09-09)</td></tr><tr><td colspan="6">F单 139双 69 NAP CHINA (09-09)</td></tr><tr><td colspan="6">G单 40双 87 MALAYSIA (09-09)</td></tr><tr><td rowspan="3" colspan="3">客户: MK-MMK</td><td colspan="6">F单 139双 69 NAP CHINA (09-09)</td></tr><tr><td colspan="6">G单 40双 87 MALAYSIA (09-09)</td></tr><tr><td colspan="6">H单 100双 12 PANAMA (09-30)</td></tr><tr><td rowspan="3" colspan="3">季节: RESORT 2027</td><td colspan="6">I单 770双 26 EU ECOM (09-30)</td></tr><tr><td colspan="6">J单 314双 31 EU WHSL (09-30)</td></tr><tr><td colspan="6">K单 48双 07 US WHSL 美国 (10-07)</td></tr><tr><td rowspan="3" colspan="3">收单日期: 2026-05-22</td><td colspan="6">K单 48双 07 US WHSL 美国 (10-07)</td></tr><tr><td colspan="6">L单 50双 69 NAP CHINA (10-07)</td></tr><tr><td colspan="6"></td></tr><tr><td rowspan="2">NO.</td><td rowspan="2">COLOR/COLOR CODE/SKU#</td><td colspan="13">部位名称</td><td rowspan="2">合计</td></tr><tr><td>鞋面</td><td>后耳朵</td><td>包跟</td><td>包中底边</td><td>内里/垫脚里</td><td>后套里</td><td>饰扣1</td><td>中底</td><td>大底</td><td>鞋跟</td><td>天皮</td><td>垫脚回力</td><td>垫脚烫印</td><td>后跟回力</td><td>材质标</td><td>后跟上口位</td></tr><tr><td>1</td><td>VANILL A/150/40F2H NMP1B</td><td>139.5CM (伸缩率±2%)小号卵石纹MK LOGO PVC新(不织布底)/MK SIG SEMI LUX SM FW(MK BIAGIO SEMI LUX MK PEBBLE PVC-SM-REGULAR WEIGHT(MAINLINE/OFF PRICE BACKING)香草色/VANILLA厂商:SOLTO</td><td>139.5CM (伸缩率±2%)小号卵石纹MK LOGO PVC新(不织布底)/MK SIG SEMI LUX SM FW-THINNER PVC(MK BIAGIO SEMI LUX MK PEBBLE PVC-SM-REGULAR WEIGHT(MAINLINE/OFF PRICE BACKING 50G NON WOVEN)香草色/VANILLA厂商:SOLTO</td><td>0.75MM 139.5CM (伸缩率±2%)超薄小号卵石纹MK LOGO PVC新(不织布底)/MK SIG SEMI LUX SM FW-THINNER PVC(MK BIAGIO SEMI LUX MK PEBBLE PVC-SM-REGULAR WEIGHT(MAINLINE/OFF PRICE BACKING 50G NON WOVEN)香草色/VANILLA厂商:SOLTO</td><td>0.75MM 139.5CM (伸缩率±2%)超薄小号卵石纹MK LOGO PVC新(不织布底)/MK SIG SEMI LUX SM FW-THINNER PVC(MK BIAGIO SEMI LUX MK PEBBLE PVC-SM-REGULAR WEIGHT(MAINLINE/OFF PRICE BACKING 50G NON WOVEN)香草色/VANILLA厂商:SOLTO</td><td>145-150CM软羊纹PU/FANTASTIKA NAPPA CHPU自然色/NATURAL厂商:CORONET VN</td><td>0.8MM 54"水性绒面革/FAUX SUEDE LINING(IVANDA WATER BASED FAUX SUEDE)自然色/NATURAL厂商:益康</td><td>8MM MK饰扣钉/FACET CHARM STUD 18K金色/18K GOLD MR-3249脚长4.5M(1PCS面配1PCS底)</td><td>PP中底/P PINSOLE MK-WINNIE-75-2(MK22005款)</td><td>TPU成型底/TPU MOLD OUTSOLE自然色/NATURAL WINNIE-75-B</td><td>ABS面料跟/ABS WRAPPE D HEEL白色/WITE WINNIE-75-H</td><td>6MM面料跟水沟纹CPU天皮/CPU TOP LIFT FOR UPPER WRAPPE D HEEL自然色/NATURAL WINNIE-75-H</td><td>3MM 36"环保乳胶/MK-IMP ACT LATEX D28(35Y/卷)/LATE X D28绿色/GREEN</td><td>烫印金色字(LGM红底金色)</td><td>2MM塑料鞋垫D28/PLASTIC INSOLES D28/MIÉ NG DÉM LOT GLÁY BÂNG NHUA D28绿色/GREEN MK-001</td><td>MICHAEL KORS大底材质标/LABEL透明底黑色字</td><td>0.6MM 1*1.3M港宝/FLEXON 10T自然色/NATURAL</td></tr><tr><td>2</td><td>BLACK/001/40F2H NMP2L</td><td>1.3-1.5MM斯普伦多牛皮/SPLEND OR CALK黑色/BLACK 17-21SF马靴级 使用率83% ABC 2/5/3厂商:兴昂制革</td><td>1.3-1.5MM斯普伦多牛皮/SPLEND OR CALK黑色/BLACK 17-21SF马靴级 使用率83% ABC 2/5/3厂商:兴昂制革</td><td>1.3-1.5MM斯普伦多牛皮/SPLEND OR CALK黑色/BLACK 17-21SF马靴级 使用率83% ABC 2/5/3厂商:兴昂制革</td><td>0.6-0.65M 135-140CM半雾面羊纹PU(无伸缩细布底)/CTD NAPPA SEMI-MAT TE 60CH黑色/BLACK厂商:CORONET VN</td><td>145-150CM软羊纹PU/FANTASTIKA NAPPA CHPU自然色/BLACK厂商:CORONET VN</td><td>0.8MM 54"水性绒面革/FAUX SUEDE LINING(IVANDA WATER BASED FAUX SUEDE)黑色/BLACK厂商:益康</td><td>"</td><td>"</td><td>TPU成型底/TPU MOLD OUTSOLE黑色/BLACK厂商:益康</td><td>"</td><td>6MM面料跟水沟纹CPU天皮/CPU TOP LIFT FOR UPPER WRAPPE D HEEL黑色/BLACK厂商:益康</td><td>"</td><td>"</td><td>MICHAEL KORS大底材质标/LABEL透明底金色字</td><td>0.4-0.45MM 36"C04S自软胶片/TOE BOX自然色/NATURAL厂商:勇宝</td></tr><tr><td>3</td><td>NAVY/406/40F2H NMP1S</td><td>0.7-0.9MM羊京皮/KID SUEDE LTHR(SAVOY SUEDE)海军蓝色/NAVY 2.5-4SF密鞋级 80%厂商:宏锦</td><td>0.7-0.9MM羊京皮/KID SUEDE LTHR(SAVOY SUEDE)海军蓝色/NAVY 2.5-4SF密鞋级 80%厂商:宏锦</td><td>0.7-0.9MM羊京皮/KID SUEDE LTHR(SAVOY SUEDE)海军蓝色/NAVY 2.5-4SF密鞋级 80%厂商:宏锦</td><td>0.7-0.9MM羊京皮/KID SUEDE LTHR(SAVOY SUEDE)海军蓝色/NAVY 2.5-4SF密鞋级 80%厂商:宏锦</td><td>145-150CM软羊纹PU/FANTASTIKA NAPPA CHPU自然色/NATURAL厂商:CORONET VN</td><td>0.8MM 54"水性绒面革/FAUX SUEDE LINING(IVANDA WATER BASED FAUX SUEDE)自然色/NATURAL厂商:益康</td><td>"</td><td>"</td><td>TPU成型底/TPU MOLD OUTSOLE黑色/BLACK厂商:益康</td><td>"</td><td>"</td><td>"</td><td>"</td><td>N/A</td><td>810</td></tr><tr><td>4</td><td>LT CREAM /289/40F2H NMP2L</td><td>1.3-1.5MM斯普伦多牛皮/SPLEND OR CALK浅奶黄色/LIGHT CREAM 17-21SF马靴级 使用率83% ABC 2/5/3厂商:兴昂制革</td><td>1.3-1.5MM斯普伦多牛皮/SPLEND OR CALK浅奶黄色/LIGHT CREAM 17-21SF马靴级 使用率83% ABC 2/5/3厂商:兴昂制革</td><td>1.3-1.5MM斯普伦多牛皮/SPLEND OR CALK浅奶黄色/LIGHT CREAM 17-21SF马靴级 使用率83% ABC 2/5/3厂商:兴昂制革</td><td>0.6-0.65M 135-140CM半雾面羊纹PU(无伸缩细布底)/CTD NAPPA SEMI-MAT TE 60CH浅奶黄色/LIGHT CREAM厂商:CORONET VN</td><td>"</td><td>"</td><td>"</td><td>TPU成型底/TPU MOLD OUTSOLE自然色/NATURAL厂商:益康</td><td>"</td><td>6MM面料跟水沟纹CPU天皮/CPU TOP LIFT FOR UPPER WRAPPE D HEEL自然色/NATURAL厂商:益康</td><td>"</td><td>"</td><td>MICHAEL KORS大底材质标/LABEL透明底黑色字</td><td>0.6MM 1*1.3M港宝/FLEXON 10T自然色/NATURAL厂商:勇宝</td></tr><tr><td>5</td><td>LT BLUSH/660/40F2H NMP2L</td><td>1.3-1.5MM斯普伦多牛皮/SPLEND OR CALK浅红色/LIGHT BLUSH 17-21SF马靴级 使用率83% ABC 2/5/3厂商:兴昂制革</td><td>1.3-1.5MM斯普伦多牛皮/SPLEND OR CALK浅红色/LIGHT BLUSH 17-21SF马靴级 使用率83% ABC 2/5/3厂商:兴昂制革</td><td>1.3-1.5MM斯普伦多牛皮/SPLEND OR CALK浅红色/LIGHT BLUSH 17-21SF马靴级 使用率83% ABC 2/5/3厂商:兴昂制革</td><td>0.6-0.65M 135-140CM半雾面羊纹PU(无伸缩细布底)/CTD NAPPA SEMI-MAT TE 60CH浅红色/LIGHT BLUSH厂商:CORONET VN</td><td>"</td><td>"</td><td>"</td><td>TPU成型底/TPU MOLD OUTSOLE自然色/NATURAL厂商:益康</td><td>"</td><td>6MM面料跟水沟纹CPU天皮/CPU TOP LIFT FOR UPPER WRAPPE D HEEL自然色/NATURAL厂商:益康</td><td>"</td><td>"</td><td>0.4-0.45MM 36"C04S白软胶片/TOE BOX自然色/NATURAL厂商:勇宝</td><td>998</td></tr></tbody></table>
+
+制表：Huynh Thi Thuan
+
+审核：李文林5120
+
+核准：
+
+厂单号：VMK26050389
+
+<table class="table table-bordered"><thead><tr><th rowspan="2">NO.</th><th rowspan="2">COLO/COLOR CODE/SKU#</th><th colspan="12">部位名称</th><th rowspan="2">合计</th></tr><tr><th>鞋面</th><th>后耳朵</th><th>包跟</th><th>包中底边</th><th>内里/垫脚里</th><th>后套里</th><th>饰扣1</th><th>中底</th><th>大底</th><th>鞋跟</th><th>天皮</th><th>垫脚回力</th><th>垫脚烫印</th><th>后跟回力</th><th>材质标</th><th>后跟上口位</th></tr></thead><tbody><tr><td>6</td><td>SILVER / 040/40R7H NMP1M</td><td>0.7-0.9MM金属软羊皮/METAL NAPPA银色/SILVER4-6SFA/B/C级=40/40/20%厂商:DADA</td><td>0.7-0.9MM金属软羊皮/METAL NAPPA银色/SILVER4-6SFA/B/C级=40/40/20%厂商:DADA</td><td>0.7-0.9MM金属软羊皮/METAL NAPPA银色/SILVER4-6SFA/B/C级=40/40/20%厂商:DADA</td><td>0.6-0.65MM140-145CM金属软羊纹PU/CANTADORA NAPPA CROM 60CH银色/SILVER厂商:CORONET VN</td><td>"</td><td>"</td><td>8MM MK饰扣钉/FACET CHARM STUD亮银色/SHINY RHODIUM MR-3249脚长4.5MM(1PCS面配1PCS底)</td><td>"</td><td>"</td><td>"</td><td>"</td><td>"</td><td>烫印银色字(L183红底银色)</td><td>"</td><td>"</td><td>N/A</td><td>520</td></tr><tr><td>7</td><td>PALE GOLD/740/40S6H NMP1D</td><td>52"水波纹格利特/GLITTER RIVER浅金色/PAL E GOLD厂商:FUTURE TEXTILES</td><td>52"水波纹格利特/GLITTER RIVER浅金色/PAL E GOLD厂商:FUTURE TEXTILES</td><td>52"水波纹格利特/GLITTER RIVER浅金色/PAL E GOLD厂商:FUTURE TEXTILES</td><td>52"水波纹格利特/GLITTER RIVER浅金色/PAL E GOLD厂商:FUTURE TEXTILES</td><td>"</td><td>"</td><td>8MM MK饰扣钉/FACET CHARM STUD18K金色/18K GOLD MR-3249脚长4.5MM(1PCS面配1PCS底)</td><td>"</td><td>"</td><td>"</td><td>"</td><td>烫印金色字(LGM红底金色)</td><td>"</td><td>"</td><td>0.6MM1*1.3M港宝/FLEXON10T/COUNTERS FLEXON10T自然色/NATURAL</td><td>692</td></tr><tr><td>8</td><td>LUGGAGE/230/40R7H NMP1E</td><td>1.0MM沃拉尔腊感PU/1.0MMVOLARE PU WITH DTM BACKING JT-866-NEWSPRINT EMBOSS浅咖色/LUGGAGE厂商:骏腾</td><td>1.0MM沃拉尔腊感PU/1.0MMVOLARE PU WITH DTM BACKING JT-866-NEWSPRINT EMBOSS浅咖色/LUGGAGE厂商:骏腾</td><td>N/A</td><td>0.6-0.65MM135-140CM半雾面羊纹PU(无伸缩细布底)/CTD NAPPA SEMI-MAT TE 60CH浅咖色/LUGGAGE</td><td>"</td><td>"</td><td>8MM MK饰扣钉/FACET CHARM STUD古金色/ANTIQUE GOLD MR-3249脚长4.5MM(1PCS面配1PCS底)</td><td>"</td><td>"</td><td>ABS层皮跟白色WINNIE-75-H四面包4mm间距自然色亮面层皮+6MM层皮跟水沟纹CPU天皮自然色WINNIE-75-H</td><td>N/A</td><td>"</td><td>"</td><td>"</td><td>N/A</td><td>512</td></tr><tr><td colspan="7">印刷要求</td><td colspan="11">包装及其它要求</td></tr></tbody></table>
+
+核准：`;
+
+const DEMO_BOM = `<div align="center">
+
+# 越南亮华鞋业有限公司
+
+</div>
+
+<div align="center">
+
+# 主、面料用量控制表
+
+</div>
+
+厂单号：VMK26050389
+
+型体编号：MK22005
+
+楦/跟：MK-WINNIE-75-2023（旧）
+
+款名：ALINA FLEX PUMP
+
+<div style='text-align: center;'><img src='https://maas-watermark-prod-new.cn-wlcb.ufileos.com/ocr%2Fcrop%2F2026060516433744af5ffe62eb4a45%2Fcrop_1_1780649038106.png?UCloudPublicKey=TOKEN_6df395df-5d8c-4f69-90f8-a4fe46088958&Signature=sb5lFHKxYvN%2FKeX3XVEyiBb%2BMtc%3D&Expires=1781253838' alt='OCR图片'/></div>
+
+<table border="1"><tr><td rowspan="2">配法</td><td rowspan="2">包含部位名称</td><td rowspan="2" colspan="2">材料名称+颜色</td><td>规格</td><td rowspan="2">目标用量SF</td><td colspan="2">单一用量(=实划用量)</td><td colspan="2">拼刀否</td><td rowspan="2">单刀用量</td><td rowspan="2">备注</td></tr><tr><td>(张幅/厚度/宽度/纹路要求)</td><td>SF/对</td><td>Y/对</td><td>是</td><td>否</td></tr><tr><td rowspan="2">1</td><td>鞋面+后耳朵</td><td>(伸缩率±2%)小号卵石纹MKLOGO</td><td>香草色</td><td>139.5CM</td><td>1.56</td><td></td><td>0.1038米</td><td></td><td>√</td><td>鞋面0.1024米后耳朵0.0014米</td><td>MK字朝前一个方向开料</td></tr><tr><td>包跟+包中底边</td><td>(伸缩率±2%)超薄小号卵石纹MKLOGO</td><td>香草色</td><td>139.5CM</td><td>0.45</td><td></td><td>0.03米</td><td></td><td>√</td><td>包跟0.0113米包中底边0.0187米</td><td>包跟MK字朝下包中底边卡黄开</td></tr><tr><td>2</td><td>鞋面+后耳朵+包跟</td><td>斯普伦多牛皮</td><td>黑色</td><td>14-20SF</td><td>1.55</td><td>1.55</td><td></td><td>√</td><td></td><td>鞋面1.45后耳朵用石单料包跟0.18</td><td></td></tr><tr><td>3</td><td>鞋面+后耳朵+包跟+包中底边</td><td>羊京皮</td><td>海军蓝色</td><td>2.5-4SF</td><td>2.0</td><td>2.0</td><td></td><td>√</td><td></td><td>鞋面1.5后耳朵0.021用石单料包跟0.2包中底边0.35</td><td></td></tr><tr><td>4+5</td><td>鞋面+后耳朵+包跟</td><td>斯普伦多牛皮</td><td>浅奶黄色/浅红色</td><td>15-20SF</td><td>1.55</td><td>1.55</td><td></td><td>√</td><td></td><td>鞋面1.45后耳朵用石单料包跟0.18</td><td></td></tr><tr><td rowspan="2">6</td><td>鞋面+后耳朵+包跟</td><td>金属软羊皮</td><td>银色</td><td>4-6SF</td><td>1.7</td><td>1.7</td><td></td><td>√</td><td></td><td>鞋面1.5后耳朵0.021用石单料包跟0.2</td><td></td></tr><tr><td>包中底边</td><td>金属软羊纹PU</td><td>银色</td><td>140-145CM</td><td>0.28</td><td></td><td>0.026cm²</td><td></td><td>√</td><td></td><td></td></tr><tr><td>7</td><td>鞋面+后耳朵+包跟+包中底边</td><td>水波纹格利特</td><td>浅金色</td><td>52&quot;</td><td>1.86</td><td></td><td>0.1431</td><td></td><td>√</td><td>鞋面0.1077后耳朵0.0015包跟0.0116包中底边0.0223</td><td></td></tr><tr><td>8</td><td>鞋面+后耳朵</td><td>沃拉尔腊感PU</td><td>浅咖色</td><td>52111.0MM</td><td>1.43</td><td></td><td>0.11</td><td></td><td></td><td>鞋面0.1084Y后耳朵0.0016Y</td><td></td></tr></table>
+
+<div align="center">
+
+# 越南亮华鞋业有限公司
+
+</div>
+
+<div align="center">
+
+# 主、面料用量控制表
+
+</div>
+
+厂单号：VMK26050389
+
+植/跟：MK-WINNIE-75-2023（旧）
+
+型体编号：MK22005
+
+<div style='text-align: center;'><img src='https://maas-watermark-prod-new.cn-wlcb.ufileos.com/ocr%2Fcrop%2F2026060516433744af5ffe62eb4a45%2Fcrop_1_1780649038158.png?UCloudPublicKey=TOKEN_6df395df-5d8c-4f69-90f8-a4fe46088958&Signature=o4ORPI9BvJGLXllLEvT2Ezu8tjE%3D&Expires=1781253838' alt='OCR图片'/></div>
+
+款名：ALINA FLEX PUMP
+
+<table border="1"><tr><td>2+4+5+8</td><td>包中底边</td><td>半雾面羊纹PU(无伸缩细布底)</td><td>黑色/浅奶黄色/浅红色</td><td>135-140CM</td><td>0.28</td><td></td><td>0.026m2</td><td></td><td>√</td><td></td><td></td></tr><tr><td>1+2+3+4+5+6+7+8</td><td>内里+垫脚里</td><td>软羊纹PU</td><td>自然色/黑色</td><td>145-150CM</td><td>1.25</td><td></td><td>0.1162m2</td><td></td><td>√</td><td>内里0.079m2垫脚里0.0372m2</td><td></td></tr><tr><td>1+2+3+4+5+6+7+8</td><td>后套里</td><td>水性绒面革</td><td>自然色/黑色</td><td>54&quot;</td><td>0.29</td><td></td><td>0.0215</td><td></td><td>√</td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></table>
+
+制表：清文
+
+审核：刘武宁
+
+核准：
+
+日期：2026-5-30`;
+
+// ═══════════════════════ PARSERS ═══════════════════════
+function parsePO(text) {
+  const d = document.createElement('div');
+  d.innerHTML = text;
+
+  const grab = (re) => (text.match(re)||[])[1]?.trim() || '';
+
+  // Metadata — handle both ： and :, and various whitespace layouts
+  const orderNo = grab(/厂单号[：:\s]+([A-Z]{2,5}\d{4,})/i)
+               || grab(/([A-Z]{2,5}\d{7,})/);
+  const model   = grab(/型体号码[：:\s]+([^\s<\r\n]+)/);
+  const style   = grab(/款\s*名[：:]\s*([^\n<\r]+)/);
+  const cust    = grab(/客\s*户[：:]\s*([^\n<\r]+)/);
+  const season  = grab(/季\s*节[：:]\s*([^\n<\r]+)/);
+  const totalQ  = parseInt(grab(/订单总数[：:]\s*(\d+)/)) || 0;
+
+  // Locate the 合计 column index by scanning TH rows for "合计"
+  // This handles tables where 合计 is a named column (not always last TD)
+  let qtyColIdx = -1; // -1 means "use last TD" fallback
+  d.querySelectorAll('tr').forEach(tr => {
+    const ths = [...tr.querySelectorAll('th')];
+    ths.forEach((th, i) => {
+      if (th.textContent.trim() === '合计') qtyColIdx = i;
+    });
+  });
+
+  // Color rows: first TD = small int (NO.), second TD = color code, last TD or qtyColIdx = qty
+  const colors = [];
+  const seenColorIds = new Set(); // deduplicate rows (e.g. duplicate sub-order rows)
+  const matCellTexts = []; // raw text of material cells → used for EN name lookup
+  const missingQtyIds = []; // color IDs where qty could not be read from source
+
+  d.querySelectorAll('tr').forEach(tr => {
+    const cells = [...tr.querySelectorAll('td')];
+    if (cells.length < 3) return;
+    const id  = cells[0].textContent.trim();
+    if (!/^\d{1,2}$/.test(id)) return;
+    const code = cells[1].textContent.trim();
+    if (!code || /NO\.|COLOR|SKU/i.test(code)) return;
+
+    // Skip duplicate color rows (same NO + color base)
+    const dedup = id + '|' + code.split('/')[0].trim();
+    if (seenColorIds.has(dedup)) return;
+    seenColorIds.add(dedup);
+
+    // Try to read qty: first try qtyColIdx, then last cell, then scan all cells for a plausible qty
+    let qty = 0;
+    let qtyFound = false;
+
+    // Strategy 1: if we know the 合计 col index from TH scan
+    if (qtyColIdx >= 0 && qtyColIdx < cells.length) {
+      const v = parseInt(cells[qtyColIdx].textContent.trim());
+      if (!isNaN(v) && v > 0) { qty = v; qtyFound = true; }
+    }
+
+    // Strategy 2: last cell is a plain integer (the most common case)
+    if (!qtyFound) {
+      const last = cells[cells.length - 1].textContent.trim();
+      if (/^\d+$/.test(last)) {
+        const v = parseInt(last);
+        if (v > 0 && v < 9999999) { qty = v; qtyFound = true; }
+      }
+    }
+
+    // Strategy 3: scan ALL cells (right-to-left) for a standalone integer in plausible range
+    if (!qtyFound) {
+      for (let i = cells.length - 1; i >= 2; i--) {
+        const txt = cells[i].textContent.trim();
+        if (/^\d{2,6}$/.test(txt)) {
+          const v = parseInt(txt);
+          if (v > 0 && v < 99999) { qty = v; qtyFound = true; break; }
+        }
+      }
+    }
+
+    if (!qtyFound) missingQtyIds.push(id);
+
+    colors.push({ id, code, qty, qtyMissing: !qtyFound });
+    for (let i = 2; i < cells.length; i++)
+      matCellTexts.push(cells[i].textContent);
+  });
+
+  // If totalQ not stated in text, derive from sub-order lines in PO header
+  // Pattern: "X双" lines in the sub-order section
+  const subOrderMatches = [...text.matchAll(/[A-Z单]+\s+(\d+)双/g)];
+  const subOrderTotal = subOrderMatches.reduce((s, m) => s + parseInt(m[1]), 0);
+  const colorTotal    = colors.reduce((s, c) => s + (c.qty||0), 0);
+  const finalTotal    = totalQ || subOrderTotal || colorTotal;
+
+  return { orderNo, model, style, cust, season, totalQ: finalTotal,
+           colors, matCellTexts, missingQtyIds };
+}
+
+function parseBOM(text) {
+  const d = document.createElement('div');
+  d.innerHTML = text;
+
+  const grab = (re) => (text.match(re)||[])[1]?.trim() || '';
+  const orderNo = grab(/厂单号[：:\s]+([A-Z]{2,5}\d{4,})/i);
+  const model   = grab(/型体编号[：:]\s*(\S+)/);
+
+  const mats = [];
+  let carryOverCfg = '';   // carries cfg from rowspan rows forward
+  let carryOverCount = 0;  // how many more rows to carry
+
+  d.querySelectorAll('tr').forEach(tr => {
+    const cells = [...tr.querySelectorAll('td')];
+    if (cells.length < 7) return;
+
+    // Determine cfg for this row
+    let cfg = '';
+    let cfgCellIdx = 0;
+
+    const firstTxt = cells[0].textContent.trim();
+    if (/^\d+(\+\d+)*$/.test(firstTxt) && firstTxt.length <= 20) {
+      // Normal cfg cell
+      cfg = firstTxt;
+      // Check if it has rowspan (carry forward)
+      const rs = parseInt(cells[0].getAttribute('rowspan') || '1');
+      if (rs > 1) { carryOverCfg = cfg; carryOverCount = rs - 1; }
+      cfgCellIdx = 0;
+    } else if (carryOverCount > 0) {
+      // This row's cfg cell was merged via rowspan — use carried cfg
+      cfg = carryOverCfg;
+      carryOverCount--;
+      cfgCellIdx = -1; // cells start at part/material, not cfg
+    } else {
+      return; // no valid cfg
+    }
+
+    // Shift cell indices if cfg was carried (row has one fewer cell)
+    const c = cfgCellIdx === -1 ? [null, ...cells] : cells;
+
+    const part    = c[1]?.textContent.trim() || '';
+    const matName = c[2]?.textContent.trim() || '';
+    const color   = c[3]?.textContent.trim() || '';
+    const spec    = c[4]?.textContent.trim() || '';
+    const tgtSF   = c[5]?.textContent.trim() || '';
+    const sfPair  = c[6]?.textContent.trim() || '';
+    const yPair   = c[7]?.textContent.trim() || '';
+    // note is at col 10 (0-indexed); in wider tables sometimes col 11
+    const note    = c.length > 11 ? (c[10]?.textContent.trim() || c[11]?.textContent.trim() || '') : (c.length > 10 ? c[10]?.textContent.trim() || '' : '');
+
+    if (!matName) return;
+
+    // Determine per-pair value + unit
+    // Priority: SF/对 → Y/对(m²) → Y/对(yd) → 目标用量SF
+    let perPair = 0, unit = '';
+    const sfv = parseFloat(sfPair);
+    if (!isNaN(sfv) && sfv > 0) {
+      perPair = sfv; unit = 'SF';
+    } else {
+      const m2m = yPair.match(/([\d.]+)\s*m/i);
+      if (m2m) {
+        perPair = parseFloat(m2m[1]); unit = 'm²';
+      } else {
+        const yv = parseFloat(yPair);
+        if (!isNaN(yv) && yv > 0) {
+          perPair = yv; unit = 'yd';
+        } else {
+          const tv = parseFloat(tgtSF);
+          if (!isNaN(tv) && tv > 0) { perPair = tv; unit = 'SF'; }
+        }
+      }
+    }
+
+    if (perPair > 0) mats.push({ cfg, part, matName, color, spec, perPair, unit, note });
+  });
+
+  return { orderNo, model, mats };
+}
+
+// ═══════════════════════ HELPERS ═══════════════════════
+// Extract English name from PO cell text given a Chinese material name.
+// Pattern in PO cells: "…ChineseName/ENGLISH NAME colorInfo…"
+function extractEnglishName(chName, cellTexts) {
+  const esc = chName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Match: ChName / EnglishPart — stop at first non-ASCII (Chinese) char or '/'
+  const reStr = esc + '[^/\\n]{0,5}?/([A-Z][A-Za-z0-9 ()\\-.]{2,60}?)(?=[^\\x00-\\x7F]|/|$)';
+  const re = new RegExp(reStr, 'i');
+  for (const txt of cellTexts) {
+    const m = txt.match(re);
+    if (m) {
+      let eng = m[1].trim().replace(/\s{2,}/g, ' ');
+      // Trim at '(' if meaningful text precedes it
+      const pi = eng.indexOf('(');
+      if (pi > 5) eng = eng.substring(0, pi).trim();
+      return eng.length > 60 ? eng.substring(0, 60).trim() : eng;
+    }
+  }
+  return '';
+}
+
+// Expand multi-config BOM rows (e.g. cfg="1+2", color="黑色/自然色")
+// into individual rows per color (cfg="1" color="黑色", cfg="2" color="自然色").
+// For rows where cfg has many IDs but fewer color variants (e.g. "1+2+3+4+5+6+7+8" / "自然色/黑色"),
+// we create one row per cfg and cycle/broadcast color parts as best we can.
+// Chinese color keyword map: English PO color fragment → Chinese BOM color name
+const COLOR_ZH_MAP = [
+  { en: ['BLACK','BLK','黑'],       zh: '黑色' },
+  { en: ['VANILLA','VANILL'],        zh: '香草色' },
+  { en: ['NAVY'],                    zh: '海军蓝色' },
+  { en: ['CREAM','LT CREAM','LIGHT CREAM'], zh: '浅奶黄色' },
+  { en: ['BLUSH','LT BLUSH','LIGHT BLUSH'], zh: '浅红色' },
+  { en: ['SILVER','SILVE'],          zh: '银色' },
+  { en: ['GOLD','PALE GOLD'],        zh: '浅金色' },
+  { en: ['LUGGAGE'],                 zh: '浅咖色' },
+  { en: ['NATURAL','NAT'],           zh: '自然色' },
+];
+
+// Given a PO color code (e.g. "BLACK/001/..."), find which BOM colorPart matches best.
+// colorParts = list of Chinese color names from BOM (e.g. ["自然色","黑色"])
+function matchColorPart(poCode, colorParts) {
+  if (!poCode || !colorParts.length) return colorParts[0] || '';
+  const up = poCode.toUpperCase();
+  // Direct: check if any colorPart appears literally in PO code (after translation)
+  for (const entry of COLOR_ZH_MAP) {
+    const matchEn = entry.en.some(e => up.includes(e.toUpperCase()));
+    if (matchEn && colorParts.includes(entry.zh)) return entry.zh;
+  }
+  // Fallback: return first colorPart (default/most common color)
+  return colorParts[0];
+}
+
+function expandMaterials(mats, colors) {
+  const result = [];
+  mats.forEach(m => {
+    const ids = m.cfg.split('+').map(s => s.trim());
+    if (ids.length === 1) {
+      result.push({ ...m });
+      return;
+    }
+    const colorParts = m.color.split('/').map(s => s.trim()).filter(Boolean);
+    if (colorParts.length === 0) colorParts.push(m.color);
+
+    if (colorParts.length >= ids.length) {
+      // 1:1 exact mapping — one row per cfg
+      ids.forEach((id, i) => {
+        result.push({ ...m, cfg: id, cfgOrig: m.cfg, color: colorParts[i] || m.color });
+      });
+    } else if (colorParts.length === 1) {
+      // Single color shared by all cfgs — keep as one combined row
+      result.push({ ...m, cfgOrig: m.cfg });
+    } else {
+      // Fewer color variants than cfgs (e.g. 2 colors for 8 cfgs)
+      // Group cfgs by their matched color → one row per color group
+      const groups = {}; // color → [ids]
+      ids.forEach(id => {
+        const poColor = colors.find(c => c.id === id);
+        const col = poColor ? matchColorPart(poColor.code, colorParts) : colorParts[0];
+        if (!groups[col]) groups[col] = [];
+        groups[col].push(id);
+      });
+      Object.entries(groups).forEach(([col, groupIds]) => {
+        result.push({
+          ...m,
+          cfg: groupIds.join('+'),
+          cfgOrig: m.cfg,
+          color: col,
+        });
+      });
+    }
+  });
+  return result;
+}
+
+// ═══════════════════════ STATE ═══════════════════════
+let S = null; // { po, bom, colors[] }
+
+function applicableQty(cfg) {
+  if (!S) return 0;
+  const ids = cfg.split('+').map(s => s.trim());
+  return S.colors.reduce((sum, c) => ids.includes(c.id) ? sum + (c.qty||0) : sum, 0);
+}
+
+// ═══════════════════════ RENDER ═══════════════════════
+const FMT  = (n, d=3) => parseFloat(n.toFixed(d)).toLocaleString('en-US');
+const FMTI = (n) => Math.round(n).toLocaleString('en-US');
+
+const SWATCH = {
+  BLACK:'#222', BLK:'#222', WHITE:'#f0f0ef', WHT:'#f0f0ef',
+  BLUSH:'#d4a0a0', PINK:'#e8a0b8', 'LT BLUSH':'#d4a0a0',
+  NATURAL:'#d4c4a8', NAT:'#d4c4a8', RED:'#c03030',
+  BLUE:'#3060a0', NAVY:'#1a2a4e', CREAM:'#f4eedc', NUDE:'#d2b89e',
+  VANILLA:'#f5f0d8', VANILL:'#f5f0d8',
+  SILVER:'#c0c0c0', GOLD:'#d4a840', 'PALE GOLD':'#e8d48a',
+  LUGGAGE:'#b89060', CREAM:'#f4eedc',
+  'LT CREAM':'#f5eed5', 'LIGHT CREAM':'#f5eed5',
+};
+function swatch(code) {
+  const up = code.toUpperCase();
+  for (const [k,v] of Object.entries(SWATCH)) if (up.includes(k)) return v;
+  return '#bdb5a8';
+}
+function colorName(raw) { return (raw.split('/')[0]||'').trim(); }
+
+function render() {
+  if (!S) return;
+  const { po, bom, colors } = S;
+  const total = colors.reduce((s,c)=>s+(c.qty||0),0);
+
+  // Order bar
+  document.getElementById('order-bar').innerHTML = `
+    <div><div class="ofield-label">Order No.</div>
+      <div class="ofield-val lg">${po.orderNo||'—'}</div></div>
+    <div><div class="ofield-label">Model</div>
+      <div class="ofield-val">${po.model||bom.model||'—'}</div></div>
+    <div><div class="ofield-label">Style</div>
+      <div class="ofield-val">${po.style||'—'}</div></div>
+    <div><div class="ofield-label">Customer</div>
+      <div class="ofield-val">${po.cust||'—'}</div></div>
+    <div><div class="ofield-label">Season</div>
+      <div class="ofield-val">${po.season||'—'}</div></div>
+    <div style="margin-left:auto">
+      <div class="ofield-label">Total Pairs</div>
+      <div class="ofield-val lg">${FMTI(total)}</div>
+      ${po.totalQ && po.totalQ !== total ? `<div style="font-size:11px;color:#aaa;margin-top:2px">of ${FMTI(po.totalQ)} in PO</div>` : ''}
+    </div>`;
+
+  // Stat cards
+  const byUnit = {};
+  bom.mats.forEach(m => {
+    const qty = applicableQty(m.cfg);
+    const tot = qty * m.perPair;
+    byUnit[m.unit] = (byUnit[m.unit]||0) + tot;
+  });
+  document.getElementById('stat-cards').innerHTML =
+    colors.map(c=>`
+      <div class="scard">
+        <div class="scard-lbl" style="display:flex;align-items:center;gap:5px">
+          <span style="width:9px;height:9px;border-radius:50%;background:${swatch(c.code)};
+            border:1px solid rgba(0,0,0,.18);display:inline-block"></span>
+          Color ${c.id}
+        </div>
+        <div class="scard-val">${FMTI(c.qty)}</div>
+        <div class="scard-sub">${colorName(c.code)}</div>
+      </div>`).join('')
+    + `<div class="scard">
+        <div class="scard-lbl">Total Pairs</div>
+        <div class="scard-val">${FMTI(total)}</div>
+        <div class="scard-sub">${colors.length} color(s) · ${bom.mats.length} materials</div>
+      </div>`
+    + Object.entries(byUnit).map(([u,v])=>`
+      <div class="scard">
+        <div class="scard-lbl">Total ${u}</div>
+        <div class="scard-val" style="font-size:18px">${FMT(v,u==='SF'?1:3)}</div>
+        <div class="scard-sub">${u} across all lines</div>
+      </div>`).join('');
+
+  // Color inputs
+  document.getElementById('clr-list').innerHTML = colors.map((c,i)=>`
+    <div class="clr-card" style="${c.qtyMissing ? 'border-color:var(--amber);background:var(--amber-bg)' : ''}">
+      <div class="clr-dot" style="background:${swatch(c.code)}"></div>
+      <div class="clr-info">
+        <div class="clr-id">Color ${c.id}</div>
+        <div class="clr-code">${c.code}</div>
+        ${c.qtyMissing ? '<div style="font-size:11px;color:var(--amber);font-weight:600;margin-top:2px">⚠ Qty not found in source — enter manually</div>' : ''}
+      </div>
+      <div class="qty-wrap">
+        <label>Quantity</label>
+        <input class="qty-inp" type="number" min="0" value="${c.qty}"
+          onchange="updQty(${i},this.value)"
+          style="${c.qtyMissing ? 'border-color:var(--amber)' : ''}">
+        <span class="qty-unit">pairs</span>
+      </div>
+    </div>`).join('');
+
+  // Material table
+  document.getElementById('mat-tbody').innerHTML = bom.mats.map((m,i)=>{
+    const qty  = applicableQty(m.cfg);
+    const tot  = qty * m.perPair;
+    const dec  = m.unit==='SF' ? 2 : 4;
+    const cfgCls = m.cfg==='1' ? 'cfg-1' : m.cfg==='2' ? 'cfg-2' : 'cfg-a';
+    const cfgLbl = `C${m.cfg}`;
+    return `<tr>
+      <td style="color:var(--tx3);font-size:12px">${i+1}</td>
+      <td><span class="cfg ${cfgCls}">${cfgLbl}</span></td>
+      <td>
+        <div style="font-size:12px;color:var(--tx2)">${m.part}</div>
+        ${m.note?`<div class="mnote">${m.note}</div>`:''}
+      </td>
+      <td>
+        <div class="mname">${m.matName}</div>
+        ${m.engName?`<div class="meng">${m.engName}</div>`:''}
+      </td>
+      <td>
+        <div class="mcolor">${m.color}</div>
+        ${m.engColor ? `<div style="font-size:11px;font-weight:600;color:var(--tx2);margin-top:2px;letter-spacing:.01em">${m.engColor}</div>` : ''}
+      </td>
+      <td style="font-size:12px;color:var(--tx2);white-space:nowrap">${m.spec||'—'}</td>
+      <td class="r">
+        <span class="big">${m.perPair}</span><span class="utag">${m.unit}</span>
+        <div class="sub">/pair</div>
+      </td>
+      <td class="r">
+        <span class="big">${FMTI(qty)}</span>
+        <div class="sub">pairs</div>
+      </td>
+      <td class="r">
+        <span class="big">${FMT(tot,dec)}</span><span class="utag">${m.unit}</span>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Tfoot — totals grouped by unit
+  const unitTotals = {};
+  bom.mats.forEach(m => {
+    const qty = applicableQty(m.cfg);
+    const tot = qty * m.perPair;
+    if (!unitTotals[m.unit]) unitTotals[m.unit]=[];
+    unitTotals[m.unit].push({ name: m.matName, tot });
+  });
+  const footCells = Object.entries(unitTotals)
+    .map(([u,arr])=>`<strong>${FMT(arr.reduce((s,x)=>s+x.tot,0), u==='SF'?2:4)} ${u}</strong>`)
+    .join(' &nbsp;·&nbsp; ');
+  document.getElementById('mat-tfoot').innerHTML =
+    `<tr><td colspan="6" style="color:var(--tx2);font-size:11px">TOTAL BY UNIT</td>
+     <td colspan="3" class="r">${footCells}</td></tr>`;
+}
+
+function updQty(i, v) {
+  if (!S) return;
+  S.colors[i].qty = Math.max(0, parseInt(v)||0);
+  render();
+}
+
+// ═══════════════════════ ACTIONS ═══════════════════════
+function setStatus(id, type, msg) {
+  const el = document.getElementById(id);
+  el.className = 'istatus ' + type;
+  el.textContent = msg;
+}
+
+function run() {
+  const poTxt  = document.getElementById('ta-po').value.trim();
+  const bomTxt = document.getElementById('ta-bom').value.trim();
+  document.getElementById('global-err').textContent = '';
+  setStatus('st-po','','');
+  setStatus('st-bom','','');
+
+  let hasErr = false;
+  if (!poTxt)  { setStatus('st-po','err','✗ Paste the Production Order .md content first.'); hasErr=true; }
+  if (!bomTxt) { setStatus('st-bom','err','✗ Paste the BOM .md content first.'); hasErr=true; }
+  if (hasErr) return;
+
+  let po, bom;
+  try { po  = parsePO(poTxt); }
+  catch(e) { setStatus('st-po','err','✗ Parse error: '+e.message); return; }
+  try { bom = parseBOM(bomTxt); }
+  catch(e) { setStatus('st-bom','err','✗ Parse error: '+e.message); return; }
+
+  // Validate
+  if (!po.orderNo) setStatus('st-po','warn','⚠ Order number not detected — check format');
+  else if (!po.colors.length) setStatus('st-po','warn',`⚠ ${po.orderNo}: no color rows found`);
+  else {
+    const missing = po.missingQtyIds||[];
+    if (missing.length) {
+      setStatus('st-po','warn',
+        `✓ ${po.orderNo} — ${po.colors.length} color(s) · ⚠ Qty missing for Color ${missing.join(', ')} — enter manually below`);
+    } else {
+      setStatus('st-po','ok',`✓ ${po.orderNo} — ${po.colors.length} color(s), ${po.totalQ||po.colors.reduce((s,c)=>s+c.qty,0)} pairs`);
+    }
+  }
+
+  if (!bom.orderNo) setStatus('st-bom','warn','⚠ Order number not detected — check format');
+  else if (!bom.mats.length) setStatus('st-bom','warn',`⚠ ${bom.orderNo}: no material rows found`);
+  else setStatus('st-bom','ok',`✓ ${bom.model||bom.orderNo} — ${bom.mats.length} material lines`);
+
+  if (po.orderNo && bom.orderNo && po.orderNo !== bom.orderNo) {
+    const prev = document.getElementById('st-bom').textContent;
+    setStatus('st-bom','warn', prev + ` · ⚠ Order no. mismatch (PO: ${po.orderNo}, BOM: ${bom.orderNo})`);
+  }
+
+  if (!po.colors.length || !bom.mats.length) {
+    document.getElementById('global-err').textContent =
+      'Cannot calculate — fix the errors above and try again.';
+    return;
+  }
+
+  // Enrich BOM materials with English names from PO, then expand per-color rows
+  bom.mats = bom.mats.map(m => ({
+    ...m,
+    engName: extractEnglishName(m.matName, po.matCellTexts || [])
+  }));
+  bom.mats = expandMaterials(bom.mats, po.colors);
+
+  // Attach English color name from PO color list to each expanded row
+  const colorEngMap = {};
+  po.colors.forEach(c => { colorEngMap[c.id] = c.code.split('/')[0].trim(); });
+  bom.mats = bom.mats.map(m => ({
+    ...m,
+    engColor: colorEngMap[m.cfg] || ''
+  }));
+
+  S = { po, bom, colors: po.colors.map(c=>({...c})) };
+  // Apply PDF-extracted quantities if available
+  if (Object.keys(_pdfExtractedQty||{}).length) {
+    S.colors.forEach(c => {
+      if (_pdfExtractedQty[c.id] !== undefined) {
+        c.qty = _pdfExtractedQty[c.id];
+        c.qtyMissing = false;
+      }
+    });
+  }
+  document.getElementById('sec-results').style.display = 'block';
+  document.getElementById('sec-results').scrollIntoView({ behavior:'smooth', block:'start' });
+  render();
+}
+
+function goBack() {
+  document.getElementById('sec-results').style.display = 'none';
+  document.getElementById('sec-import').scrollIntoView({ behavior:'smooth' });
+}
+
+function loadDemo() {
+  document.getElementById('ta-po').value  = DEMO_PO;
+  document.getElementById('ta-bom').value = DEMO_BOM;
+  setStatus('st-po','','');
+  setStatus('st-bom','','');
+  document.getElementById('global-err').textContent = '';
+}
+
+// ═══════════════════════ IMAGE OCR QUANTITY EXTRACTOR ═══════════════════════
+// Strategy: OCR the full PO page image via ocr.space API with word-position
+// overlay, then identify the 合计 column as the rightmost cluster of
+// standalone integers. No pixel analysis — works with any photo angle.
+
+let ocrImages = [];
+let _pdfExtractedQty = {};
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+function handlePDFUpload(input) {
+  const files = [...input.files];
+  if (!files.length) return;
+  ocrImages = [];
+  const reads = files.map(f => new Promise(res => {
+    const r = new FileReader();
+    r.onload = e => { ocrImages.push({ name: f.name, dataUrl: e.target.result }); res(); };
+    r.readAsDataURL(f);
+  }));
+  Promise.all(reads).then(() => {
+    ocrImages.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+    const n = ocrImages.length;
+    document.getElementById('pdf-status').textContent =
+      n === 1 ? ocrImages[0].name : `${n} ảnh (${ocrImages.map(i=>i.name).join(', ').slice(0,60)})`;
+    document.getElementById('pdf-status').style.color = 'var(--tx2)';
+    document.getElementById('pdf-read-btn').style.display = 'inline-flex';
+    document.getElementById('pdf-result').style.display = 'none';
+  });
+}
+
+async function extractQtyFromPDF() {
+  if (!ocrImages.length) return;
+  const btn      = document.getElementById('pdf-read-btn');
+  const resultEl = document.getElementById('pdf-result');
+  const statusEl = document.getElementById('pdf-status');
+
+  btn.textContent = '⏳ Đang phân tích...';
+  btn.disabled = true;
+  resultEl.style.display = 'block';
+
+  try {
+    const colorIds = (S && S.colors)
+      ? S.colors.map(c => c.id)
+      : ['1','2','3','4','5','6','7','8'];
+
+    // allEntries: [{no: string|null, qty: number, page: number}]
+    // 'no' is from the NO-column pairing; null means positional-only.
+    const allEntries = [];
+    const pageDebug  = [];
+
+    for (let pi = 0; pi < ocrImages.length; pi++) {
+      const label = `Ảnh ${pi+1}/${ocrImages.length}`;
+      resultEl.innerHTML = `<div style="color:var(--tx3)">${label}: đang OCR…</div>`;
+      const { entries, debug } = await ocrImageForQtys(ocrImages[pi].dataUrl);
+      entries.forEach(e => allEntries.push({ ...e, page: pi+1 }));
+      pageDebug.push({ page: pi+1, name: ocrImages[pi].name, entries, ...debug });
+    }
+
+    if (!allEntries.length)
+      throw new Error('Không đọc được số lượng từ ảnh. Kiểm tra độ sáng / nét.');
+
+    // ── Map entries → colorIds ─────────────────────────────────────────────
+    // Pass 1: entries with confirmed NO from column-pairing  → direct assign
+    const mapped = {};
+    allEntries.filter(e => e.no !== null)
+              .forEach(e => { mapped[e.no] = e.qty; });
+
+    // Pass 2: entries whose NO is unknown → positional among remaining colors
+    const stillNeeded = colorIds.filter(id => mapped[id] === undefined);
+    allEntries.filter(e => e.no === null)
+              .forEach((e, i) => { if (stillNeeded[i]) mapped[stillNeeded[i]] = e.qty; });
+
+    const results = colorIds
+      .filter(id => mapped[id] !== undefined)
+      .map(id => ({ no: id, qty: mapped[id], fromOCR: true }));
+
+    if (!results.length) throw new Error('Không ghép được số lượng với màu sắc.');
+
+    // Preserve MD-parsed qtys for colors OCR didn't cover
+    const covered = new Set(results.map(r => r.no));
+    if (S) S.colors.forEach(c => {
+      if (!covered.has(c.id) && !c.qtyMissing && c.qty > 0)
+        results.push({ no: c.id, qty: c.qty, fromOCR: false });
+    });
+
+    applyExtractedQty({ colors: results, pageDebug }, resultEl, statusEl);
+
+  } catch(e) {
+    resultEl.innerHTML =
+      `<div style="color:var(--red);margin-bottom:10px">✗ ${e.message}</div>${manualFallbackHTML()}`;
+    console.error('extractQtyFromPDF:', e);
+  } finally {
+    btn.textContent = '🔍 Đọc số lượng';
+    btn.disabled = false;
+  }
+}
+
+// ── Image helpers ─────────────────────────────────────────────────────────────
+function loadImg(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error('Không tải được ảnh'));
+    img.src = src;
+  });
+}
+
+async function resizeForOCR(dataUrl, maxW = 1800) {
+  const img = await loadImg(dataUrl);
+  if (img.width <= maxW) return dataUrl;
+  const scale = maxW / img.width;
+  const c = document.createElement('canvas');
+  c.width = maxW;
+  c.height = Math.round(img.height * scale);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.90);
+}
+
+// ── Core OCR ──────────────────────────────────────────────────────────────────
+// Returns { entries: [{no: string|null, qty}], debug: {strategy, count, pairs} }
+//
+// Algorithm:
+//   1. OCR full page with word-position overlay (engine 2)
+//   2. Cluster all numeric words into vertical columns by x-position
+//   3. Identify NO column  → leftmost col, values 1–20, x < 13% of image width
+//   4. Identify 合计 column → rightmost col with ≥2 entries all ≥ 100
+//      Fallback: widen search to right 25% if column clustering finds nothing
+//   5. Pair NO ↔ qty by Y-proximity (|ΔY| < 15% image height)
+//   6. Entries with no matched NO are returned with no=null (positional later)
+async function ocrImageForQtys(dataUrl) {
+  const resized = await resizeForOCR(dataUrl);
+  const img     = await loadImg(resized);
+  const imgW = img.width, imgH = img.height;
+
+  const fd = new FormData();
+  fd.append('base64Image', 'data:image/jpeg;base64,' + resized.split(',')[1]);
+  fd.append('language',          'eng');
+  fd.append('isOverlayRequired', 'true');
+  fd.append('OCREngine',         '2');
+  fd.append('scale',             'true');
+  fd.append('isTable',           'false');
+
+  const resp = await fetch('https://api.ocr.space/parse/image', {
+    method: 'POST', headers: { 'apikey': 'K81898745988957' }, body: fd
+  });
+  if (!resp.ok) throw new Error(`OCR API HTTP ${resp.status}`);
+
+  const json = await resp.json();
+  if (json.IsErroredOnProcessing) {
+    const msg = Array.isArray(json.ErrorMessage)
+      ? json.ErrorMessage.join('; ') : (json.ErrorMessage || '?');
+    throw new Error('OCR: ' + msg);
+  }
+  const parsed = json.ParsedResults?.[0];
+  if (!parsed || parsed.FileParseExitCode !== 1)
+    throw new Error('Ảnh không đọc được (code ' + (parsed?.FileParseExitCode ?? '?') + ')');
+
+  // No overlay → raw-text fallback
+  if (!parsed.TextOverlay?.Lines?.length) {
+    const qtys = parseRawTextForQtys(parsed.ParsedText || '');
+    return { entries: qtys.map(q => ({ no: null, qty: q })),
+             debug: { strategy: 'raw-text', count: qtys.length, pairs: '' } };
+  }
+
+  // ── Collect numeric words ─────────────────────────────────────────────────
+  const words = [];
+  parsed.TextOverlay.Lines.forEach(line =>
+    (line.Words || []).forEach(w => {
+      const t = (w.WordText || '').trim().replace(/[,\s]/g, '');
+      if (/^\d{1,6}$/.test(t)) {
+        const v = parseInt(t);
+        if (v > 0) words.push({ val: v, left: w.Left, top: w.Top });
+      }
+    })
+  );
+
+  // Skip very top (logo / factory name)
+  const topSkip = imgH * 0.12;
+  const data = words.filter(w => w.top > topSkip);
+
+  // ── Cluster into vertical columns ────────────────────────────────────────
+  const bW = imgW * 0.04; // ±4% tolerance per column
+  const cols = [];
+  for (const w of data) {
+    let ok = false;
+    for (const c of cols) {
+      if (Math.abs(w.left - c.cx) < bW) {
+        c.e.push(w);
+        c.cx = c.e.reduce((s,x)=>s+x.left,0) / c.e.length;
+        ok = true; break;
+      }
+    }
+    if (!ok) cols.push({ cx: w.left, e: [w] });
+  }
+  cols.sort((a,b) => b.cx - a.cx); // rightmost first
+
+  // ── NO column: leftmost col, values 1–20, x < 13% image width ───────────
+  let noEntries = [];
+  const noCol = cols
+    .filter(c => c.cx < imgW * 0.13 && c.e.every(x => x.val >= 1 && x.val <= 20))
+    .sort((a,b) => a.cx - b.cx)[0];
+  if (noCol) {
+    const sorted = noCol.e.slice().sort((a,b) => a.top - b.top);
+    let lt = -9999;
+    for (const e of sorted) {
+      if (e.top - lt > imgH * 0.03) { noEntries.push(e); lt = e.top; }
+    }
+  }
+
+  // ── 合计 column: rightmost col with ≥2 deduped entries, values ≥ 100 ─────
+  let qtyEntries = [], strategy = 'none';
+  const rowGap = imgH * 0.02;
+
+  for (const col of cols) {
+    if (col.e.length < 2) continue;
+    const sorted = col.e.slice().sort((a,b) => a.top - b.top);
+    const dd = []; let lt = -9999;
+    for (const e of sorted) {
+      if (e.top - lt > rowGap) { dd.push(e); lt = e.top; }
+    }
+    const valid = dd.filter(e => e.val >= 100);
+    if (valid.length >= 2) {
+      qtyEntries = valid;
+      strategy   = `col@${Math.round(col.cx)}px`;
+      break;
+    }
+  }
+
+  // Wide-right fallback: any ≥100 in right 25%
+  if (!qtyEntries.length) {
+    const rw = data.filter(w => w.val >= 100 && w.left > imgW * 0.75)
+                   .sort((a,b) => a.top - b.top);
+    let lt = -9999;
+    for (const w of rw) {
+      if (w.top - lt > rowGap) { qtyEntries.push(w); lt = w.top; }
+    }
+    strategy = qtyEntries.length ? 'wide-right' : 'none';
+  }
+
+  // Raw-text last resort
+  if (!qtyEntries.length) {
+    const qtys = parseRawTextForQtys(parsed.ParsedText || '');
+    return { entries: qtys.map(q => ({ no: null, qty: q })),
+             debug: { strategy: 'raw-text', count: qtys.length, pairs: '' } };
+  }
+
+  // ── Pair qty entries with NO entries by Y-proximity ───────────────────────
+  const maxPairDist = imgH * 0.15;
+  const entries = qtyEntries.map(q => {
+    if (!noEntries.length) return { no: null, qty: q.val };
+    const best = noEntries.reduce((b, n) =>
+      Math.abs(n.top - q.top) < Math.abs(b.top - q.top) ? n : b);
+    return {
+      no:  Math.abs(best.top - q.top) < maxPairDist ? String(best.val) : null,
+      qty: q.val
+    };
+  });
+
+  const pairStr = entries.filter(e => e.no).map(e => `${e.no}→${e.qty}`).join(', ');
+  const posCount = entries.filter(e => !e.no).length;
+  console.log(`[OCR p] ${strategy} | ${pairStr || '—'} | positional:${posCount}`);
+
+  return { entries, debug: { strategy, count: entries.length, pairs: pairStr } };
+}
+
+function parseRawTextForQtys(text) {
+  // Each color row ends with its 合计 value.
+  // No value-dedup: two colors can legitimately share the same quantity.
+  const qtys = [];
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.trim().match(/\b(\d{3,6})\s*$/);
+    if (m) { const n = parseInt(m[1]); if (n >= 100 && n <= 99999) qtys.push(n); }
+  }
+  return qtys;
+}
+
+// ── Apply & display ───────────────────────────────────────────────────────────
+function applyExtractedQty(parsed, resultEl, statusEl) {
+  if (!parsed?.colors?.length) throw new Error('Không có dữ liệu màu');
+  const extracted = {};
+  parsed.colors.forEach(c => { extracted[String(c.no)] = parseInt(c.qty); });
+  _pdfExtractedQty = extracted;
+
+  if (S) {
+    S.colors.forEach(c => {
+      if (extracted[c.id] !== undefined) { c.qty = extracted[c.id]; c.qtyMissing = false; }
+    });
+    document.querySelectorAll('.qty-inp').forEach((inp, i) => {
+      if (S.colors[i]) inp.value = S.colors[i].qty;
+    });
+    render();
+  }
+
+  // Editable chips — user can correct wrong OCR values inline
+  const chips = parsed.colors.map(c => {
+    const label = S?.colors.find(x => x.id === c.no)?.colorName
+                  ? S.colors.find(x => x.id === c.no).colorName.slice(0,14)
+                  : `Màu ${c.no}`;
+    return `<span class="pdf-qty-chip${c.fromOCR ? ' ocr' : ''}">
+      <span class="chip-lbl">${label}</span>
+      <input type="number" value="${c.qty}" min="0" step="1"
+             data-cid="${c.no}" onchange="patchOCRQty('${c.no}',this.value)">
+      ${c.fromOCR ? '<span title="Đọc từ OCR" style="color:var(--blue);font-size:10px">✦</span>' : ''}
+    </span>`;
+  }).join('');
+
+  // Per-page debug (collapsible)
+  let dbg = '';
+  if (parsed.pageDebug?.length) {
+    const rows = parsed.pageDebug.map(p => {
+      const v = (p.entries||[]).map(e => e.no ? `${e.no}→${e.qty}` : `?→${e.qty}`).join(', ');
+      return `<div><b>Ảnh ${p.page}</b> [${p.strategy||'?'}]: ${v||'–'}</div>`;
+    }).join('');
+    dbg = `<details style="margin-top:8px">
+      <summary style="font-size:10px;color:var(--tx3);cursor:pointer;user-select:none">▸ Chi tiết OCR</summary>
+      <div style="font-size:10px;color:var(--tx3);margin-top:4px;line-height:1.9;
+        font-family:monospace;background:var(--surf2);padding:6px 8px;border-radius:4px">${rows}</div>
+    </details>`;
+  }
+
+  const ocrCount = parsed.colors.filter(c => c.fromOCR).length;
+  resultEl.innerHTML = `
+    <div style="color:var(--green);font-weight:600;margin-bottom:6px">
+      ✓ ${parsed.colors.length} màu — ${ocrCount} từ OCR (✦ có thể sửa)</div>
+    <div class="pdf-qty-table">${chips}</div>${dbg}`;
+  resultEl.style.display = 'block';
+  if (statusEl) { statusEl.textContent = '✓ Đã apply'; statusEl.style.color = 'var(--green)'; }
+}
+
+// Inline edit: update one color quantity without re-running OCR
+function patchOCRQty(colorId, rawVal) {
+  const qty = Math.max(0, parseInt(rawVal) || 0);
+  if (_pdfExtractedQty) _pdfExtractedQty[String(colorId)] = qty;
+  if (S) {
+    const c = S.colors.find(x => x.id === String(colorId));
+    if (c) { c.qty = qty; c.qtyMissing = qty === 0; render(); }
+  }
+}
+
+function manualFallbackHTML() {
+  return `<div style="font-size:11px;color:var(--tx2);font-weight:600;margin-bottom:6px">Nhập thủ công:</div>
+    <textarea id="manual-json-input"
+      placeholder='{"colors":[{"no":"1","qty":792},{"no":"2","qty":1089},{"no":"4","qty":1073}]}'
+      style="width:100%;box-sizing:border-box;height:60px;font-size:11px;font-family:monospace;
+             background:var(--surf);border:1px solid var(--bd2);color:var(--tx);
+             border-radius:4px;padding:8px;resize:vertical"></textarea>
+    <button class="btn btn-primary btn-sm" style="margin-top:6px" onclick="applyManualJSON()">✓ Apply</button>`;
+}
+
+function showManualExtractUI(resultEl) {
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = manualFallbackHTML();
+}
+
+function applyManualJSON() {
+  const raw = document.getElementById('manual-json-input')?.value?.trim() || '';
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    applyExtractedQty(parsed, document.getElementById('pdf-result'), document.getElementById('pdf-status'));
+  } catch(e) { alert('JSON không hợp lệ:\n' + e.message); }
+}
+
+
+// ═══════════════════════ AI PDF PARSING ═══════════════════════
+// Uploads PDFs directly → Claude API reads both docs in one call →
+// returns structured JSON → bypasses parsePO/parseBOM entirely.
+// Workflow: B1 (ocr.z.ai) + B2 (copy-paste) + B3 (image convert) all eliminated.
+
+let poPdfData  = null; // { name, b64, size }
+let bomPdfData = null;
+
+function handlePOPdf(input) {
+  const f = input.files[0];
+  if (!f) return;
+  if (f.size > 20 * 1024 * 1024) {
+    setStatus('st-po', 'err', '✗ File quá lớn (> 20MB). Nén PDF trước khi upload.'); return;
+  }
+  const r = new FileReader();
+  r.onload = e => {
+    poPdfData = { name: f.name, b64: e.target.result.split(',')[1], size: f.size };
+    document.getElementById('po-pdf-name').textContent = `✓ ${f.name} (${(f.size/1024).toFixed(0)} KB)`;
+    document.getElementById('po-pdf-name').className = 'pdf-pick-name loaded';
+    setStatus('st-po', 'ok', `PDF sẵn sàng — nhấn "AI Parse PDF" để phân tích`);
+  };
+  r.readAsDataURL(f);
+}
+
+function handleBOMPdf(input) {
+  const f = input.files[0];
+  if (!f) return;
+  if (f.size > 20 * 1024 * 1024) {
+    setStatus('st-bom', 'err', '✗ File quá lớn (> 20MB).'); return;
+  }
+  const r = new FileReader();
+  r.onload = e => {
+    bomPdfData = { name: f.name, b64: e.target.result.split(',')[1], size: f.size };
+    document.getElementById('bom-pdf-name').textContent = `✓ ${f.name} (${(f.size/1024).toFixed(0)} KB)`;
+    document.getElementById('bom-pdf-name').className = 'pdf-pick-name loaded';
+    setStatus('st-bom', 'ok', `PDF sẵn sàng — nhấn "AI Parse PDF" để phân tích`);
+  };
+  r.readAsDataURL(f);
+}
+
+async function runFromPDF() {
+  if (!poPdfData) { setStatus('st-po',  'err', '✗ Chưa chọn PDF đơn sản xuất'); return; }
+  if (!bomPdfData){ setStatus('st-bom', 'err', '✗ Chưa chọn PDF BOM');           return; }
+
+  const btn = document.getElementById('ai-parse-btn');
+  const sta = document.getElementById('ai-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang phân tích…';
+  sta.textContent = '';
+  document.getElementById('global-err').textContent = '';
+  setStatus('st-po',  'warn', '⏳ Gemini đang đọc đơn sản xuất…');
+  setStatus('st-bom', 'warn', '⏳ Gemini đang đọc BOM…');
+
+  try {
+    sta.textContent = 'Gửi 2 PDF lên Gemini API…';
+    const { po, bom } = await parseWithClaude(poPdfData.b64, bomPdfData.b64);
+
+    const missingQty = po.colors.filter(c => c.qtyMissing || !c.qty);
+    setStatus('st-po',
+      missingQty.length ? 'warn' : 'ok',
+      `✓ ${po.orderNo} — ${po.colors.length} màu · ${po.totalQ || po.colors.reduce((s,c)=>s+c.qty,0)} đôi`
+      + (missingQty.length ? ` · ⚠ Qty thiếu cho màu ${missingQty.map(c=>c.id).join(', ')}` : ''));
+
+    setStatus('st-bom', 'ok',
+      `✓ ${bom.model || bom.orderNo} — ${bom.mats.length} nguyên liệu`);
+
+    sta.textContent = '';
+    runFromData(po, bom);
+
+  } catch(e) {
+    sta.textContent = '';
+    document.getElementById('global-err').textContent = '✗ ' + e.message;
+    console.error('runFromPDF:', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ AI Parse PDF (Gemini)';
+  }
+}
+
+// ── Gemini proxy call: gửi 2 PDF → /api/parse → trả JSON ────────────────────
+// API key được giấu trong Vercel env var, frontend không chạm key trực tiếp.
+async function parseWithClaude(poPdfB64, bomPdfB64) {
+  const resp = await fetch('/api/parse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ poPdfB64, bomPdfB64 })
+  });
+
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.error || `Server lỗi ${resp.status}`);
+  }
+
+  return data;   // { po: {...}, bom: {...} }
+}
+
+// ── Build state directly from Claude JSON — bypasses parsePO / parseBOM ───────
+function runFromData(poData, bomData) {
+  document.getElementById('global-err').textContent = '';
+
+  const po = {
+    orderNo:      poData.orderNo || '',
+    model:        poData.model   || '',
+    style:        poData.style   || '',
+    cust:         poData.cust    || '',
+    season:       poData.season  || '',
+    totalQ:       parseInt(poData.totalQ) || 0,
+    colors: (poData.colors || []).map(c => ({
+      id:         String(c.id),
+      code:       c.code || '',
+      qty:        parseInt(c.qty) || 0,
+      qtyMissing: !!(c.qtyMissing || !parseInt(c.qty))
+    })),
+    matCellTexts:  [],   // not available in JSON mode
+    missingQtyIds: (poData.colors || [])
+      .filter(c => c.qtyMissing || !parseInt(c.qty))
+      .map(c => String(c.id))
+  };
+
+  const bom = {
+    orderNo: bomData.orderNo || '',
+    model:   bomData.model   || '',
+    mats: (bomData.mats || [])
+      .filter(m => parseFloat(m.perPair) > 0 && m.matName)
+      .map(m => ({
+        cfg:     String(m.cfg),
+        part:    m.part    || '',
+        matName: m.matName || '',
+        engName: m.engName || '',
+        color:   m.color   || '',
+        spec:    m.spec    || '',
+        perPair: parseFloat(m.perPair),
+        unit:    m.unit    || 'SF',
+        note:    m.note    || ''
+      }))
+  };
+
+  if (!po.colors.length) {
+    document.getElementById('global-err').textContent =
+      'Không tìm thấy màu sắc trong đơn sản xuất. Kiểm tra lại file PDF.';
+    return;
+  }
+  if (!bom.mats.length) {
+    document.getElementById('global-err').textContent =
+      'Không tìm thấy nguyên liệu trong BOM. Kiểm tra lại file PDF.';
+    return;
+  }
+
+  // Expand multi-cfg BOM rows + attach English color from PO codes
+  bom.mats = expandMaterials(bom.mats, po.colors);
+  const colorEngMap = {};
+  po.colors.forEach(c => { colorEngMap[c.id] = c.code.split('/')[0].trim(); });
+  bom.mats = bom.mats.map(m => ({ ...m, engColor: colorEngMap[m.cfg] || '' }));
+
+  S = { po, bom, colors: po.colors.map(c => ({ ...c })) };
+
+  // Overlay OCR-extracted quantities (if image OCR was run separately)
+  if (Object.keys(_pdfExtractedQty || {}).length) {
+    S.colors.forEach(c => {
+      if (_pdfExtractedQty[c.id] !== undefined) {
+        c.qty = _pdfExtractedQty[c.id];
+        c.qtyMissing = false;
+      }
+    });
+  }
+
+  document.getElementById('sec-results').style.display = 'block';
+  document.getElementById('sec-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  render();
+}
+
+function exportCSV() {
+  if (!S) return;
+  const { po, bom } = S;
+  const hdr = ['#','Config','Part','Material','Color','Spec','Per Pair','Unit','Qty (pairs)','Total Required','Unit'];
+  const rows = bom.mats.map((m,i)=>{
+    const qty = applicableQty(m.cfg);
+    const tot = qty * m.perPair;
+    return [i+1, m.cfg, m.part, m.matName, m.color, m.spec, m.perPair, m.unit, qty, tot.toFixed(4), m.unit];
+  });
+  const csv = [hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `materials-${po.orderNo||'export'}-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
