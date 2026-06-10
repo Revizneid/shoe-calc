@@ -1442,25 +1442,48 @@ function runFromData(poData, bomData) {
     orderNo: bomData.orderNo || '',
     model:   bomData.model   || '',
     mats: (bomData.mats || [])
-      .filter(m => parseFloat(m.perPair) > 0 && m.matName)
+      .filter(m => m.matName && (parseFloat(m.perPair) > 0 || parseFloat(m.perPairSF) > 0 || parseFloat(m.perPairY) > 0))
       .map(m => {
-        // Nếu Gemini đã tách sẵn thì dùng, không thì tự tách từ matName gốc
-        const matSplit  = splitZhEn(m.matName || '');
-        const colSplit  = splitZhEn(m.color   || '');
-        const engName   = m.engName  || matSplit.en;
-        const matName   = matSplit.zh || matSplit.en || m.matName || '';
-        const engColor  = m.engColor || colSplit.en;
-        const color     = colSplit.zh || colSplit.en || m.color   || '';
+        // Tách tên tiếng Trung / Anh từ matName và color
+        const matSplit = splitZhEn(m.matName || '');
+        const colSplit = splitZhEn(m.color   || '');
+        const engName  = m.engName  || matSplit.en;
+        const matName  = matSplit.zh || matSplit.en || m.matName || '';
+        const engColor = m.engColor || colSplit.en;
+        const color    = colSplit.zh || colSplit.en || m.color   || '';
+
+        // Xác định perPair đúng theo loại vật liệu
+        // Nếu AI đã chọn đúng (m.perPair) thì dùng, không thì fallback chain
+        const sfVal  = parseFloat(m.perPairSF) || 0;
+        const yVal   = parseFloat(m.perPairY)  || 0;
+        const sfTgt  = parseFloat(m.sfTarget)  || 0;
+        let perPair  = parseFloat(m.perPair)   || 0;
+        let unit     = m.unit || 'SF';
+
+        // Nếu perPair chưa được AI chọn, tự suy từ perPairSF / perPairY
+        if (!perPair) {
+          const nameLC = (matName + engName).toLowerCase();
+          const isLeather = /牛皮|羊皮|猪皮|反绒|绒皮|马毛|小牛|羊羔|nappa|suede|calf|leather|kid|nubuck|buffalo/.test(nameLC);
+          if (isLeather && sfVal) { perPair = sfVal; unit = 'SF'; }
+          else if (!isLeather && yVal) { perPair = yVal; unit = m.unit || 'm2'; }
+          else if (sfVal) { perPair = sfVal; unit = 'SF'; }
+          else if (yVal)  { perPair = yVal;  unit = m.unit || 'm2'; }
+          else if (sfTgt) { perPair = sfTgt; unit = 'SF'; }
+        }
+
         return {
           cfg:     String(m.cfg),
-          part:    m.part    || '',
+          part:    m.part || '',
           matName, engName, color, engColor,
           spec:    m.spec    || '',
-          perPair: parseFloat(m.perPair),
-          unit:    m.unit    || 'SF',
-          note:    m.note    || ''
+          sfTarget:  parseFloat(m.sfTarget)  || null,
+          perPairSF: parseFloat(m.perPairSF) || null,
+          perPairY:  parseFloat(m.perPairY)  || null,
+          perPair, unit,
+          note:    m.note || ''
         };
       })
+      .filter(m => m.perPair > 0)
   };
 
   if (!po.colors.length) {
