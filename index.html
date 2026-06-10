@@ -1423,19 +1423,23 @@ async function pdfToPageImages(pdfB64, scale = 2.0) {
 // ── Gemini proxy call: gửi 2 PDF → /api/parse → trả JSON ────────────────────
 // API key được giấu trong Vercel env var, frontend không chạm key trực tiếp.
 async function parseWithClaude(poPdfB64, bomPdfB64, provider = 'auto') {
-  // Nếu dùng Mistral: convert PO PDF thành từng trang ảnh để tránh bị cắt trang
-  let poPages = null;
+  // Nếu dùng Mistral: convert cả PO và BOM PDF thành ảnh từng trang
+  let poPages = null, bomPages = null;
   const isMistral = provider === 'mistral' || provider === 'auto';
   if (isMistral) {
-    document.getElementById('ai-status').textContent = 'Đang xử lý PDF thành ảnh…';
+    const sta = document.getElementById('ai-status');
+    sta.textContent = 'Đang render PDF thành ảnh (trang PO)…';
     poPages = await pdfToPageImages(poPdfB64);
-    document.getElementById('ai-status').textContent = '';
+    sta.textContent = 'Đang render PDF thành ảnh (trang BOM)…';
+    bomPages = await pdfToPageImages(bomPdfB64);
+    sta.textContent = '';
+    console.log(`PDF pages — PO: ${poPages?.length ?? 'failed'}, BOM: ${bomPages?.length ?? 'failed'}`);
   }
 
   const resp = await fetch('/api/parse', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ poPdfB64, bomPdfB64, provider, poPages })
+    body: JSON.stringify({ poPdfB64, bomPdfB64, provider, poPages, bomPages })
   });
 
   const data = await resp.json();
