@@ -224,16 +224,31 @@ async function callGemini(apiKey, poPdfB64, bomPdfB64) {
 }
 
 // ── Mistral single call helper ────────────────────────────────────────────────
-async function mistralCall(apiKey, pdfB64, promptText, label) {
+async function mistralCall(apiKey, pdfB64OrPages, promptText, label) {
   const url = 'https://api.mistral.ai/v1/chat/completions';
+
+  // Nếu nhận mảng ảnh (pages) → gửi từng ảnh riêng, tốt hơn cho multi-page scan PDF
+  // Nếu nhận PDF b64 → gửi document_url như cũ
+  let contentParts;
+  if (Array.isArray(pdfB64OrPages)) {
+    // Gửi từng trang như image_url — Pixtral đọc được toàn bộ không bị cắt
+    contentParts = pdfB64OrPages.map(imgB64 => ({
+      type: 'image_url',
+      image_url: `data:image/jpeg;base64,${imgB64}`
+    }));
+    contentParts.push({ type: 'text', text: promptText });
+  } else {
+    contentParts = [
+      { type: 'document_url', document_url: `data:application/pdf;base64,${pdfB64OrPages}` },
+      { type: 'text', text: promptText }
+    ];
+  }
+
   const body = {
     model: MISTRAL_MODEL,
     temperature: 0.1,
-    max_tokens: label === 'PO' ? 6000 : 4096,
-    messages: [{ role: 'user', content: [
-      { type: 'document_url', document_url: `data:application/pdf;base64,${pdfB64}` },
-      { type: 'text', text: promptText }
-    ]}]
+    max_tokens: label.startsWith('PO') ? 6000 : 4096,
+    messages: [{ role: 'user', content: contentParts }]
   };
   const resp = await fetchWithRetry(url,
     { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify(body) },
@@ -246,10 +261,15 @@ async function mistralCall(apiKey, pdfB64, promptText, label) {
 }
 
 // ── Mistral: 2 call song song — PO riêng, BOM riêng ──────────────────────────
-async function callMistral(apiKey, poPdfB64, bomPdfB64) {
+async function callMistral(apiKey, poPdfB64, bomPdfB64, poPages) {
+  // poPages = mảng PNG base64 từng trang (từ pdf.js client-side)
+  // Nếu có → gửi ảnh, nếu không → fallback gửi PDF
+  const poInput = (poPages && poPages.length > 0) ? poPages : poPdfB64;
+  console.log(`Mistral PO: ${Array.isArray(poInput) ? poInput.length + ' pages as images' : 'PDF b64'}`);
+
   // Gọi song song để tiết kiệm thời gian
   const [poRaw, bomRaw] = await Promise.all([
-    mistralCall(apiKey, poPdfB64, PROMPT_PO,  'PO'),
+    mistralCall(apiKey, poInput, PROMPT_PO, 'PO'),
     mistralCall(apiKey, bomPdfB64, PROMPT_BOM, 'BOM')
   ]);
   let po  = stripAndParse(poRaw,  'Mistral-PO');
@@ -262,7 +282,7 @@ async function callMistral(apiKey, poPdfB64, bomPdfB64) {
 
   if (totalColors > 0 && zeroCount / totalColors > 0.4) {
     console.log(`Mistral-PO: ${zeroCount}/${totalColors} màu qty=0 → retry với PROMPT_PO_RETRY`);
-    const retryRaw = await mistralCall(apiKey, poPdfB64, PROMPT_PO_RETRY, 'PO-retry');
+    const retryRaw = await mistralCall(apiKey, poInput, PROMPT_PO_RETRY, 'PO-retry');
     const poRetry = stripAndParse(retryRaw, 'Mistral-PO-retry');
     // Dùng kết quả retry nếu tốt hơn
     const retryColors = Array.isArray(poRetry.colors) ? poRetry.colors : [];
@@ -288,9 +308,9 @@ export default async function handler(req, res) {
   const GEMINI_KEY  = process.env.GEMINI_API_KEY;
   const MISTRAL_KEY = process.env.MISTRAL_API_KEY;
 
-  let poPdfB64, bomPdfB64, provider;
+  let poPdfB64, bomPdfB64, provider, poPages;
   try {
-    ({ poPdfB64, bomPdfB64, provider = 'auto' } = req.body);
+    ({ poPdfB64, bomPdfB64, provider = 'auto', poPages = null } = req.body);
     if (!poPdfB64 || !bomPdfB64) throw new Error('Thiếu poPdfB64 hoặc bomPdfB64');
   } catch (e) {
     return res.status(400).json({ error: 'Request body không hợp lệ: ' + e.message });
@@ -306,7 +326,7 @@ export default async function handler(req, res) {
       rawText = await callGemini(GEMINI_KEY, poPdfB64, bomPdfB64);
       usedProvider = 'gemini';
     } else if (provider === 'mistral') {
-      rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64);
+      rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64, poPages);
       usedProvider = 'mistral';
     } else {
       // auto: Gemini trước, fallback Mistral khi quota hết
@@ -317,12 +337,12 @@ export default async function handler(req, res) {
         } catch (e) {
           if (e.quota && MISTRAL_KEY) {
             console.log('Gemini quota → fallback Mistral');
-            rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64);
+            rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64, poPages);
             usedProvider = 'mistral';
           } else throw e;
         }
       } else {
-        rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64);
+        rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64, poPages);
         usedProvider = 'mistral';
       }
     }
