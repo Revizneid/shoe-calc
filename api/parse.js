@@ -7,7 +7,7 @@ const GEMINI_MODEL  = 'gemini-2.5-flash';
 const MISTRAL_MODEL = 'pixtral-12b-2409';  // vision model, tốt hơn cho PDF scan phức tạp
 
 const PROMPT = `Đây là 2 tài liệu sản xuất giày (tiếng Trung):
-- Document 1: Đơn sản xuất (生产单) — bảng màu sắc và số lượng
+- Document 1: Đơn sản xuất (生产单) — bảng màu sắc và số lượng từng màu
 - Document 2: Bảng dùng liệu chính (主面料用量表) — tiêu hao nguyên liệu
 
 Trích xuất và trả về DUY NHẤT một JSON object. Không giải thích, không markdown, không backtick.
@@ -21,8 +21,12 @@ Trích xuất và trả về DUY NHẤT một JSON object. Không giải thích,
     "season":  "season (季节)",
     "totalQ":  total_quantity_integer,
     "colors": [
-      { "id": "row NO.", "code": "full COLOR/SKU cell text",
-        "qty": integer_from_合计_column, "qtyMissing": false }
+      {
+        "id":         "row NO. (配色NO./色号NO.)",
+        "code":       "full COLOR code/SKU cell text (COLOR CODE/色号列)",
+        "qty":        integer_total_quantity_for_this_color_from_合计_column,
+        "qtyMissing": false
+      }
     ]
   },
   "bom": {
@@ -30,27 +34,53 @@ Trích xuất và trả về DUY NHẤT một JSON object. Không giải thích,
     "model":   "model code if present",
     "mats": [
       {
-        "cfg":      "config codes e.g. '1' or '1+2+3'",
-        "part":     "part name Chinese (部位)",
-        "matName":  "FULL material name as written — keep Chinese AND English together, e.g. '斯普伦多牛皮/SPLENDOR CALF'",
+        "cfg":      "config/配法 codes e.g. '1' or '2+3' — repeat for each row if rowspan",
+        "part":     "part name Chinese (部位名称)",
+        "matName":  "FULL material name as written in 材料名称 column — keep Chinese AND English, e.g. '斯普伦多牛皮/SPLENDOR CALF'",
         "engName":  "",
-        "color":    "FULL color as written — keep Chinese AND English together, e.g. '黑色/BLACK'",
+        "color":    "FULL color as written in 颜色 column — keep Chinese AND English, e.g. '黑色/BLACK'",
         "engColor": "",
-        "spec":     "spec/thickness e.g. '1.3-1.5MM'",
-        "perPair":  consumption_number,
-        "unit":     "SF or m2 or yd",
-        "note":     "notes if any"
+        "spec":     "spec/width/thickness from 规格 column e.g. '1.3-1.5MM' or '135-140CM'",
+        "sfTarget": target_SF_number_from_目标用量SF_column_or_null,
+        "perPairSF": number_from_SF对_column_or_null,
+        "perPairY":  number_from_Y对_column_or_null,
+        "perPair":  chosen_consumption_number_explained_below,
+        "unit":     "chosen unit: SF or m2 or yd or m",
+        "note":     "备注 column content if any"
       }
     ]
   }
 }
 
-Quy tắc:
-- qty: đọc từ cột 合计, số nguyên 3-6 chữ số. Không đọc được → qty:0, qtyMissing:true
-- cfg: nếu rowspan nhiều hàng thì lặp lại cfg đó cho từng hàng
-- perPair: ưu tiên SF/对 > m²/对 > yd/对
-- Chỉ trả hàng có matName và perPair > 0
-- Trả JSON thuần, tuyệt đối không có backtick hay markdown`;
+════ QUY TẮC QUAN TRỌNG ════
+
+▌QUY TẮC COLORS (qty):
+- qty: đọc từ cột 合计 của từng hàng màu trong đơn sản xuất. Đây là số TỔNG đôi cho màu đó.
+- 合计 thường là cột CUỐI CÙNG bên phải trong bảng màu, giá trị là số nguyên 2-5 chữ số (vd: 830, 1150, 97, 3565).
+- Nếu bảng có nhiều dòng phân phối (A单, B单...G单...) thì lấy cột 合计 chứ không cộng tay.
+- Nếu không đọc được: qty:0, qtyMissing:true
+
+▌QUY TẮC perPair & unit (QUAN TRỌNG):
+BOM có 3 cột dữ liệu: [目标用量SF] [SF/对] [Y/对]
+
+BƯỚC 1 — Xác định loại vật liệu (da thật vs phi da):
+  - DA THẬT (leather): 牛皮, 羊皮, 猪皮, 绒皮, 反绒, 马毛, 小牛, 羊羔, nappa, suede, calf, leather → dùng cột SF/对
+  - PHI DA (non-leather): PU, PVC, 布, 纤维, 无纺, 织物, lining, fabric, mesh, canvas → dùng cột Y/对
+
+BƯỚC 2 — Chọn giá trị:
+  - Nếu DA THẬT: perPair = SF/对 column value, unit = "SF"
+    - Nếu SF/对 trống: dùng 目标用量SF, unit = "SF"
+  - Nếu PHI DA: perPair = Y/对 column value, unit = "m2" (PU/PVC/布 dạng tấm), hoặc "yd" nếu Y/对
+    - Nếu Y/对 trống: dùng 目标用量SF, unit = "SF"
+  - Luôn ưu tiên giá trị thực tế đo được (SF/对 hoặc Y/对) hơn mục tiêu (目标用量SF)
+
+BƯỚC 3 — Điền sfTarget, perPairSF, perPairY đúng từng cột tương ứng (null nếu ô trống/gạch ngang)
+
+▌QUY TẮC CFG:
+- cfg rowspan: nếu 1 cấu hình (配法) bao gồm nhiều hàng, lặp lại cfg đó cho mỗi hàng
+- cfg dạng "2+3" nghĩa là cấu hình áp dụng cho cả màu 2 và màu 3
+
+Chỉ trả hàng có matName và perPair > 0. Trả JSON thuần, không backtick.`;
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 const sleep    = ms => new Promise(r => setTimeout(r, ms));
