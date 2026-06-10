@@ -64,57 +64,22 @@ QUY TẮC cfg: rowspan → lặp lại cfg cho từng hàng con.
 Chỉ trả hàng có matName và perPair > 0. JSON thuần, không backtick.`;
 
 // ── Prompt chỉ đọc PO (dùng cho Mistral call 1) ──────────────────────────────
-const PROMPT_PO = `Đây là đơn sản xuất giày (生产单), có thể nhiều trang. Nhiệm vụ DUY NHẤT: đọc số lượng từng màu từ TẤT CẢ các trang.
+const PROMPT_PO = `Đây là đơn sản xuất giày (生产单). Đọc TẤT CẢ trang.
 
-Trả về DUY NHẤT JSON sau. Không giải thích, không markdown, không backtick.
+BƯỚC 1 — Tìm số tổng đơn hàng:
+Tìm trường "订单总数" hoặc "总计" hoặc "合计" trong phần HEADER của đơn (không phải trong bảng màu).
+Ghi lại số đó là totalQ.
 
-{
-  "orderNo": "factory order no (厂单号/厂单编号)",
-  "model":   "model code (型体号码)",
-  "style":   "style name (款名)",
-  "cust":    "customer (客户)",
-  "season":  "season (季节)",
-  "totalQ":  number_from_订单总数_field,
-  "colors": [
-    { "id": "1", "code": "COLOR NAME/SKU đầy đủ", "qty": 3565, "qtyMissing": false }
-  ]
-}
+BƯỚC 2 — Tìm bảng màu:
+Bảng có dòng header chứa "NO." và nhiều tên kênh (A单, B单...) và cột "合计" ở cuối.
 
-═══ CẤU TRÚC BẢNG MÀU ═══
+BƯỚC 3 — Đối với mỗi hàng màu, làm theo thứ tự:
+a) Đọc số trong ô "合计" (cột cuối bên phải của bảng màu).
+b) Kiểm tra: số đó có hợp lý không? (không vượt quá totalQ, không bằng số ở cột khác).
+c) Nếu nghi ngờ: tìm số lớn nhất trong hàng đó, đó thường là 合计.
 
-Bảng màu có dạng:
-| NO. | COLOR/C CODE/SK | phần phối A单 | B单 | C单 | D单 | E单 | F单 | G单 | H单 | I单 | J单 | K单 | L单 | M单 | N单 | 合计 |
-
-Mỗi hàng = 1 màu. Cột 合计 là cột SỐ CUỐI CÙNG bên phải — đó là TỔNG số đôi của màu đó.
-
-VÍ DỤ THỰC TẾ từ loại đơn này:
-  Hàng 1: NAVY/40W/...    → các cột phân phối: 140, 110, 20, 3565, 24, 98, 802, 651, 70, 166, 260, 400, 304, 100  → 合计 = 3565  ← LẤY SỐ NÀY
-  Hàng 2: BLACK/36W/...   → các cột phân phối: 0, 0, 0, 802, ...                                                  → 合计 = 802   ← LẤY SỐ NÀY  (KHÔNG phải 651)
-  Hàng 3: KONIJ/15W/...   → ...                                                                                    → 合计 = 260   ← LẤY SỐ NÀY
-  Hàng 4: GRAVES/ANTI/... → ...                                                                                    → 合计 = 1306  ← LẤY SỐ NÀY
-  Hàng 5: LIGGAGE/Z30/... → ...                                                                                    → 合计 = 929   ← LẤY SỐ NÀY
-  Hàng 6: BLACK/MIL/...   → ...                                                                                    → 合计 = 694   ← LẤY SỐ NÀY
-  Hàng 7: LIGGAGE/Z30/... → ...                                                                                    → 合计 = 634   ← LẤY SỐ NÀY
-
-NGUYÊN TẮC BẮT BUỘC:
-1. 合计 = cột CUỐI CÙNG bên phải của bảng → đó là qty đúng duy nhất.
-2. TUYỆT ĐỐI KHÔNG cộng tay A单+B单+... và KHÔNG lấy giá trị từ bất kỳ cột nào khác ngoài 合计.
-3. Đọc TẤT CẢ trang trong file, không bỏ sót màu nào ở trang 2, 3...
-4. Nếu ô 合计 không đọc được → qty:0, qtyMissing:true. Không tự bịa số.
-5. id = số thứ tự (1, 2, 3...), code = toàn bộ text trong ô COLOR CODE.
-6. Kết quả: tổng qty tất cả màu phải bằng (hoặc gần bằng) trường 订单总数/总计 trong header.
-JSON thuần, không backtick.`;
-
-// ── Prompt retry PO — tiếp cận khác khi lần 1 thất bại ─────────────────────────
-const PROMPT_PO_RETRY = `Đây là đơn sản xuất giày (生产单) nhiều trang.
-
-NHIỆM VỤ: Tìm bảng có cột header "合计" (tổng cộng). Đọc từng hàng dữ liệu, ghi lại giá trị trong ô cột 合计.
-
-CÁCH LÀM:
-- Tìm dòng header của bảng màu: thường chứa chữ "NO." hoặc số thứ tự, "COLOR" hoặc màu sắc, và "合计" ở cuối.
-- Với mỗi hàng dữ liệu bên dưới header đó: đọc (1) số thứ tự/NO, (2) tên màu/SKU, (3) số trong cột 合计.
-- Đọc TẤT CẢ trang — bảng có thể tiếp tục sang trang 2.
-- 合计 = số lớn nhất trong hàng đó, thường 3-4 chữ số (100-9999).
+BƯỚC 4 — Kiểm tra tổng:
+Cộng tất cả qty lại. Nếu tổng ≠ totalQ (sai > 10%) → xem lại các hàng có qty bất thường.
 
 Trả về JSON, không markdown, không backtick:
 {
@@ -123,12 +88,39 @@ Trả về JSON, không markdown, không backtick:
   "style": "款名",
   "cust": "客户",
   "season": "季节",
-  "totalQ": number_from_订单总数,
+  "totalQ": số_tổng_từ_header,
   "colors": [
-    { "id": "1", "code": "tên màu/SKU", "qty": số_từ_cột_合计, "qtyMissing": false }
+    { "id": "1", "code": "tên màu/SKU đầy đủ", "qty": số_từ_cột_合计, "qtyMissing": false }
   ]
 }
-Nếu không đọc được ô 合计 của 1 màu: qty:0, qtyMissing:true. JSON thuần.`;
+Nếu không đọc được ô 合计: qty:0, qtyMissing:true. JSON thuần.`;
+
+// ── Prompt retry PO — tiếp cận hoàn toàn khác ───────────────────────────────
+const PROMPT_PO_RETRY = `Đây là đơn sản xuất giày. Tìm và đọc thông tin sau:
+
+THÔNG TIN CẦN ĐỌC:
+1. Trường "订单总数" trong header đơn → đây là TỔNG số đôi toàn đơn.
+2. Với mỗi hàng màu trong bảng phân phối: đọc số trong cột "合计" — cột CỰC PHẢI của bảng.
+
+QUY TẮC ĐỌC CỘT 合计:
+- Bảng phân phối có nhiều cột kênh (A单 B单 C单...). Cột cuối cùng là "合计".
+- Trong mỗi hàng, số 合计 PHẢI NHỎ HƠN HOẶC BẰNG 订单总数.
+- Nếu số bạn đọc được > 订单总数 thì sai — đọc lại.
+- Nếu tổng tất cả qty > 订单总数 thì sai — xem lại.
+
+JSON trả về (không markdown, không backtick):
+{
+  "orderNo": "厂单号",
+  "model": "型体号码",
+  "style": "款名",
+  "cust": "客户",
+  "season": "季节",
+  "totalQ": số_từ_订单总数,
+  "colors": [
+    { "id": "1", "code": "COLOR CODE/SKU", "qty": số_合计, "qtyMissing": false }
+  ]
+}
+qty không bao giờ > totalQ. Nếu không đọc được: qtyMissing:true, qty:0.`;
 
 // ── Prompt chỉ đọc BOM (dùng cho Mistral call 2) ─────────────────────────────
 const PROMPT_BOM = `Đây là bảng dùng liệu chính sản xuất giày (主面料用量表/面料用量控制表). CHỈ đọc bảng nguyên liệu.
@@ -211,7 +203,7 @@ async function callGemini(apiKey, poPdfB64, bomPdfB64) {
       { inline_data: { mime_type: 'application/pdf', data: bomPdfB64 } },
       { text: PROMPT_COMBINED }
     ]}],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+    generationConfig: { temperature: 0.1, maxOutputTokens: 8192, responseMimeType: 'application/json' }
   };
   const resp = await fetchWithRetry(url,
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
@@ -261,34 +253,54 @@ async function mistralCall(apiKey, pdfB64OrPages, promptText, label) {
 }
 
 // ── Mistral: 2 call song song — PO riêng, BOM riêng ──────────────────────────
-async function callMistral(apiKey, poPdfB64, bomPdfB64, poPages) {
-  // poPages = mảng PNG base64 từng trang (từ pdf.js client-side)
+async function callMistral(apiKey, poPdfB64, bomPdfB64, poPages, bomPages) {
+  // pages = mảng PNG base64 từng trang (từ pdf.js client-side)
   // Nếu có → gửi ảnh, nếu không → fallback gửi PDF
-  const poInput = (poPages && poPages.length > 0) ? poPages : poPdfB64;
-  console.log(`Mistral PO: ${Array.isArray(poInput) ? poInput.length + ' pages as images' : 'PDF b64'}`);
+  const poInput  = (poPages  && poPages.length  > 0) ? poPages  : poPdfB64;
+  const bomInput = (bomPages && bomPages.length > 0) ? bomPages : bomPdfB64;
+  console.log(`Mistral PO: ${Array.isArray(poInput) ? poInput.length + ' pages' : 'PDF'} | BOM: ${Array.isArray(bomInput) ? bomInput.length + ' pages' : 'PDF'}`);
 
   // Gọi song song để tiết kiệm thời gian
   const [poRaw, bomRaw] = await Promise.all([
-    mistralCall(apiKey, poInput, PROMPT_PO, 'PO'),
-    mistralCall(apiKey, bomPdfB64, PROMPT_BOM, 'BOM')
+    mistralCall(apiKey, poInput,  PROMPT_PO,  'PO'),
+    mistralCall(apiKey, bomInput, PROMPT_BOM, 'BOM')
   ]);
   let po  = stripAndParse(poRaw,  'Mistral-PO');
   const bom = stripAndParse(bomRaw, 'Mistral-BOM');
 
-  // ── Validate qty: nếu >50% màu có qty=0 → retry PO với prompt cứng hơn ────
+  // ── Validate & cross-check qty với totalQ ───────────────────────────────────
   const colors = Array.isArray(po.colors) ? po.colors : [];
   const zeroCount = colors.filter(c => !c.qty || c.qty === 0).length;
   const totalColors = colors.length;
+  const sumQty = colors.reduce((s, c) => s + (parseInt(c.qty) || 0), 0);
+  const headerTotal = parseInt(po.totalQ) || 0;
 
-  if (totalColors > 0 && zeroCount / totalColors > 0.4) {
-    console.log(`Mistral-PO: ${zeroCount}/${totalColors} màu qty=0 → retry với PROMPT_PO_RETRY`);
+  console.log(`Mistral-PO: ${totalColors} màu, sum=${sumQty}, headerTotal=${headerTotal}, zeros=${zeroCount}`);
+
+  // Case 1: quá nhiều qty=0 → retry
+  const needsRetry = (totalColors > 0 && zeroCount / totalColors > 0.4);
+  // Case 2: tổng inflate quá nhiều so với header (>20%) → retry
+  const isInflated = headerTotal > 0 && sumQty > headerTotal * 1.2;
+
+  if (needsRetry || isInflated) {
+    const reason = isInflated
+      ? `sum ${sumQty} > headerTotal ${headerTotal} * 1.2`
+      : `${zeroCount}/${totalColors} zeros`;
+    console.log(`Mistral-PO: ${reason} → retry`);
+
     const retryRaw = await mistralCall(apiKey, poInput, PROMPT_PO_RETRY, 'PO-retry');
     const poRetry = stripAndParse(retryRaw, 'Mistral-PO-retry');
-    // Dùng kết quả retry nếu tốt hơn
     const retryColors = Array.isArray(poRetry.colors) ? poRetry.colors : [];
+    const retrySum = retryColors.reduce((s, c) => s + (parseInt(c.qty) || 0), 0);
     const retryZero = retryColors.filter(c => !c.qty || c.qty === 0).length;
-    if (retryColors.length >= totalColors && retryZero < zeroCount) {
-      console.log(`Retry tốt hơn: ${retryZero}/${retryColors.length} zeros vs ${zeroCount}/${totalColors}`);
+    const retryInflated = headerTotal > 0 && retrySum > headerTotal * 1.2;
+
+    // Dùng retry nếu tốt hơn: ít inflate hơn HOẶC ít zero hơn
+    const retryBetter = retryColors.length > 0 &&
+      (!retryInflated || retrySum < sumQty) &&
+      retryZero <= zeroCount;
+    if (retryBetter) {
+      console.log(`Retry tốt hơn: sum=${retrySum}, zeros=${retryZero}`);
       po = poRetry;
     }
   }
@@ -308,9 +320,9 @@ export default async function handler(req, res) {
   const GEMINI_KEY  = process.env.GEMINI_API_KEY;
   const MISTRAL_KEY = process.env.MISTRAL_API_KEY;
 
-  let poPdfB64, bomPdfB64, provider, poPages;
+  let poPdfB64, bomPdfB64, provider, poPages, bomPages;
   try {
-    ({ poPdfB64, bomPdfB64, provider = 'auto', poPages = null } = req.body);
+    ({ poPdfB64, bomPdfB64, provider = 'auto', poPages = null, bomPages = null } = req.body);
     if (!poPdfB64 || !bomPdfB64) throw new Error('Thiếu poPdfB64 hoặc bomPdfB64');
   } catch (e) {
     return res.status(400).json({ error: 'Request body không hợp lệ: ' + e.message });
@@ -326,7 +338,7 @@ export default async function handler(req, res) {
       rawText = await callGemini(GEMINI_KEY, poPdfB64, bomPdfB64);
       usedProvider = 'gemini';
     } else if (provider === 'mistral') {
-      rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64, poPages);
+      rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64, poPages, bomPages);
       usedProvider = 'mistral';
     } else {
       // auto: Gemini trước, fallback Mistral khi quota hết
@@ -337,12 +349,12 @@ export default async function handler(req, res) {
         } catch (e) {
           if (e.quota && MISTRAL_KEY) {
             console.log('Gemini quota → fallback Mistral');
-            rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64, poPages);
+            rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64, poPages, bomPages);
             usedProvider = 'mistral';
           } else throw e;
         }
       } else {
-        rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64, poPages);
+        rawText = await callMistral(MISTRAL_KEY, poPdfB64, bomPdfB64, poPages, bomPages);
         usedProvider = 'mistral';
       }
     }
