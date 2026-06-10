@@ -4,7 +4,7 @@
 export const config = { maxDuration: 60 };
 
 const GEMINI_MODEL  = 'gemini-2.5-flash';
-const MISTRAL_MODEL = 'mistral-small-latest';
+const MISTRAL_MODEL = 'pixtral-12b-2409';  // vision model, tốt hơn cho PDF scan phức tạp
 
 const PROMPT = `Đây là 2 tài liệu sản xuất giày (tiếng Trung):
 - Document 1: Đơn sản xuất (生产单) — bảng màu sắc và số lượng
@@ -218,6 +218,20 @@ export default async function handler(req, res) {
   } catch (e) {
     return res.status(422).json({ error: e.message, raw: rawText.slice(0, 300) });
   }
+
+  // ── Normalize: đảm bảo structure luôn đúng dù AI trả thiếu ──────────────────
+  // Một số model wrap kết quả khác nhau, ví dụ { data: { po, bom } } hoặc { result: ... }
+  if (!parsed.po && !parsed.bom) {
+    // Thử tìm nested
+    const nested = parsed.data || parsed.result || parsed.output || Object.values(parsed)[0];
+    if (nested && (nested.po || nested.bom)) {
+      parsed = nested;
+    }
+  }
+  if (!parsed.po  || typeof parsed.po  !== 'object') parsed.po  = {};
+  if (!parsed.bom || typeof parsed.bom !== 'object') parsed.bom = {};
+  if (!Array.isArray(parsed.po.colors))  parsed.po.colors  = [];
+  if (!Array.isArray(parsed.bom.mats))   parsed.bom.mats   = [];
 
   // Trả thêm usedProvider để frontend biết dùng AI nào
   return res.status(200).json({ ...parsed, _provider: usedProvider });
