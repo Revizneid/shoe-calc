@@ -64,7 +64,7 @@ QUY TẮC cfg: rowspan → lặp lại cfg cho từng hàng con.
 Chỉ trả hàng có matName và perPair > 0. JSON thuần, không backtick.`;
 
 // ── Prompt chỉ đọc PO (dùng cho Mistral call 1) ──────────────────────────────
-const PROMPT_PO = `Đây là đơn sản xuất giày (生产单). Nhiệm vụ DUY NHẤT: đọc số lượng từng màu.
+const PROMPT_PO = `Đây là đơn sản xuất giày (生产单), có thể nhiều trang. Nhiệm vụ DUY NHẤT: đọc số lượng từng màu từ TẤT CẢ các trang.
 
 Trả về DUY NHẤT JSON sau. Không giải thích, không markdown, không backtick.
 
@@ -74,30 +74,61 @@ Trả về DUY NHẤT JSON sau. Không giải thích, không markdown, không ba
   "style":   "style name (款名)",
   "cust":    "customer (客户)",
   "season":  "season (季节)",
-  "totalQ":  total_quantity_number_from_订单总数_or_sum,
+  "totalQ":  number_from_订单总数_field,
   "colors": [
-    { "id": "1", "code": "COLOR NAME hoặc SKU", "qty": 830, "qtyMissing": false }
+    { "id": "1", "code": "COLOR NAME/SKU đầy đủ", "qty": 3565, "qtyMissing": false }
   ]
 }
 
-═══ HƯỚNG DẪN ĐỌC BẢNG MÀU ═══
+═══ CẤU TRÚC BẢNG MÀU ═══
 
-Bảng màu trong đơn sản xuất có cấu trúc:
-| NO. | COLOR CODE/SKU | (nhiều cột phân phối nhỏ: A单 B单 C单...) | 合计 |
+Bảng màu có dạng:
+| NO. | COLOR/C CODE/SK | phần phối A单 | B单 | C单 | D单 | E单 | F单 | G单 | H单 | I单 | J单 | K单 | L单 | M单 | N单 | 合计 |
 
-Ví dụ bảng thực tế:
-  NO.1  NAVY/406/...   A单140  B单110  C单20  D单3565  ...  合计=3565 → qty=3565 (KHÔNG phải 140+110+20)
-  NO.2  BLACK/001/...  A单0    B单0    C单0   D单802   ...  合计=802  → qty=802
-  NO.3  KHAKI/...      ...                              合计=260   → qty=260
+Mỗi hàng = 1 màu. Cột 合计 là cột SỐ CUỐI CÙNG bên phải — đó là TỔNG số đôi của màu đó.
 
-NGUYÊN TẮC QUAN TRỌNG:
-1. Cột 合计 là cột CUỐI CÙNG bên phải của bảng màu → đó là số qty đúng.
-2. KHÔNG cộng các cột A单/B单/C单/... — chỉ lấy cột 合计.
-3. Nếu ô 合计 trống hoặc là dấu "-" → qty:0, qtyMissing:true.
-4. qty phải là số nguyên dương (10-9999), không bao giờ là 0 nếu đơn đang sản xuất.
-5. Quét từng hàng màu từ trên xuống, không bỏ sót hàng nào.
-6. id = số thứ tự hàng (1, 2, 3...), code = tên màu/SKU đầy đủ.
+VÍ DỤ THỰC TẾ từ loại đơn này:
+  Hàng 1: NAVY/40W/...    → các cột phân phối: 140, 110, 20, 3565, 24, 98, 802, 651, 70, 166, 260, 400, 304, 100  → 合计 = 3565  ← LẤY SỐ NÀY
+  Hàng 2: BLACK/36W/...   → các cột phân phối: 0, 0, 0, 802, ...                                                  → 合计 = 802   ← LẤY SỐ NÀY  (KHÔNG phải 651)
+  Hàng 3: KONIJ/15W/...   → ...                                                                                    → 合计 = 260   ← LẤY SỐ NÀY
+  Hàng 4: GRAVES/ANTI/... → ...                                                                                    → 合计 = 1306  ← LẤY SỐ NÀY
+  Hàng 5: LIGGAGE/Z30/... → ...                                                                                    → 合计 = 929   ← LẤY SỐ NÀY
+  Hàng 6: BLACK/MIL/...   → ...                                                                                    → 合计 = 694   ← LẤY SỐ NÀY
+  Hàng 7: LIGGAGE/Z30/... → ...                                                                                    → 合计 = 634   ← LẤY SỐ NÀY
+
+NGUYÊN TẮC BẮT BUỘC:
+1. 合计 = cột CUỐI CÙNG bên phải của bảng → đó là qty đúng duy nhất.
+2. TUYỆT ĐỐI KHÔNG cộng tay A单+B单+... và KHÔNG lấy giá trị từ bất kỳ cột nào khác ngoài 合计.
+3. Đọc TẤT CẢ trang trong file, không bỏ sót màu nào ở trang 2, 3...
+4. Nếu ô 合计 không đọc được → qty:0, qtyMissing:true. Không tự bịa số.
+5. id = số thứ tự (1, 2, 3...), code = toàn bộ text trong ô COLOR CODE.
+6. Kết quả: tổng qty tất cả màu phải bằng (hoặc gần bằng) trường 订单总数/总计 trong header.
 JSON thuần, không backtick.`;
+
+// ── Prompt retry PO — tiếp cận khác khi lần 1 thất bại ─────────────────────────
+const PROMPT_PO_RETRY = `Đây là đơn sản xuất giày (生产单) nhiều trang.
+
+NHIỆM VỤ: Tìm bảng có cột header "合计" (tổng cộng). Đọc từng hàng dữ liệu, ghi lại giá trị trong ô cột 合计.
+
+CÁCH LÀM:
+- Tìm dòng header của bảng màu: thường chứa chữ "NO." hoặc số thứ tự, "COLOR" hoặc màu sắc, và "合计" ở cuối.
+- Với mỗi hàng dữ liệu bên dưới header đó: đọc (1) số thứ tự/NO, (2) tên màu/SKU, (3) số trong cột 合计.
+- Đọc TẤT CẢ trang — bảng có thể tiếp tục sang trang 2.
+- 合计 = số lớn nhất trong hàng đó, thường 3-4 chữ số (100-9999).
+
+Trả về JSON, không markdown, không backtick:
+{
+  "orderNo": "厂单号",
+  "model": "型体号码",
+  "style": "款名",
+  "cust": "客户",
+  "season": "季节",
+  "totalQ": number_from_订单总数,
+  "colors": [
+    { "id": "1", "code": "tên màu/SKU", "qty": số_từ_cột_合计, "qtyMissing": false }
+  ]
+}
+Nếu không đọc được ô 合计 của 1 màu: qty:0, qtyMissing:true. JSON thuần.`;
 
 // ── Prompt chỉ đọc BOM (dùng cho Mistral call 2) ─────────────────────────────
 const PROMPT_BOM = `Đây là bảng dùng liệu chính sản xuất giày (主面料用量表/面料用量控制表). CHỈ đọc bảng nguyên liệu.
@@ -198,7 +229,7 @@ async function mistralCall(apiKey, pdfB64, promptText, label) {
   const body = {
     model: MISTRAL_MODEL,
     temperature: 0.1,
-    max_tokens: 4096,
+    max_tokens: label === 'PO' ? 6000 : 4096,
     messages: [{ role: 'user', content: [
       { type: 'document_url', document_url: `data:application/pdf;base64,${pdfB64}` },
       { type: 'text', text: promptText }
@@ -221,8 +252,27 @@ async function callMistral(apiKey, poPdfB64, bomPdfB64) {
     mistralCall(apiKey, poPdfB64, PROMPT_PO,  'PO'),
     mistralCall(apiKey, bomPdfB64, PROMPT_BOM, 'BOM')
   ]);
-  const po  = stripAndParse(poRaw,  'Mistral-PO');
+  let po  = stripAndParse(poRaw,  'Mistral-PO');
   const bom = stripAndParse(bomRaw, 'Mistral-BOM');
+
+  // ── Validate qty: nếu >50% màu có qty=0 → retry PO với prompt cứng hơn ────
+  const colors = Array.isArray(po.colors) ? po.colors : [];
+  const zeroCount = colors.filter(c => !c.qty || c.qty === 0).length;
+  const totalColors = colors.length;
+
+  if (totalColors > 0 && zeroCount / totalColors > 0.4) {
+    console.log(`Mistral-PO: ${zeroCount}/${totalColors} màu qty=0 → retry với PROMPT_PO_RETRY`);
+    const retryRaw = await mistralCall(apiKey, poPdfB64, PROMPT_PO_RETRY, 'PO-retry');
+    const poRetry = stripAndParse(retryRaw, 'Mistral-PO-retry');
+    // Dùng kết quả retry nếu tốt hơn
+    const retryColors = Array.isArray(poRetry.colors) ? poRetry.colors : [];
+    const retryZero = retryColors.filter(c => !c.qty || c.qty === 0).length;
+    if (retryColors.length >= totalColors && retryZero < zeroCount) {
+      console.log(`Retry tốt hơn: ${retryZero}/${retryColors.length} zeros vs ${zeroCount}/${totalColors}`);
+      po = poRetry;
+    }
+  }
+
   // Gộp thành cùng format với Gemini
   return JSON.stringify({ po, bom });
 }
