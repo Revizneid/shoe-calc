@@ -790,9 +790,10 @@ function render() {
         ${m.engName ? `<div class="meng">${m.engName}</div>` : ''}
       </td>
       <td>
-        ${m.engColor
-          ? `<div class="mcolor-eng">${m.engColor}</div><div class="mcolor">${m.color}</div>`
-          : `<div class="mcolor">${m.color}</div>`}
+        ${m.colorway
+          ? `<div class="mcolor-eng">${m.colorway}</div>` : ''}
+        ${m.color
+          ? `<div class="mcolor">${m.color}</div>` : ''}
       </td>
       <td style="font-size:12px;color:var(--tx2);white-space:nowrap">${m.spec||'—'}</td>
       <td class="r">
@@ -1500,11 +1501,20 @@ function runFromData(poData, bomData) {
   // Expand multi-cfg BOM rows + attach English color
   // Priority: engColor from Gemini BOM → fallback to first token of PO color code
   bom.mats = expandMaterials(bom.mats, po.colors);
-  const colorEngMap = {};
-  po.colors.forEach(c => { colorEngMap[c.id] = c.code.split('/')[0].trim(); });
+  // colorwayMap: cfg → tên colorway ngắn gọn từ PO (phần đầu trước '/')
+  // Dùng để hiện badge colorway, không phải màu vật liệu
+  const colorwayMap = {};
+  po.colors.forEach(c => {
+    // Lấy phần tên màu (trước ký tự '/' hoặc số đầu tiên)
+    const shortName = c.code.split('/')[0].trim();
+    colorwayMap[c.id] = shortName;
+  });
   bom.mats = bom.mats.map(m => ({
     ...m,
-    engColor: m.engColor || colorEngMap[m.cfg] || ''
+    // engColor = tên colorway từ PO cho cfg này
+    // color = màu vật liệu từ BOM (giữ nguyên, đây là thông tin đúng)
+    colorway: colorwayMap[m.cfg] || '',
+    engColor: m.engColor || colorwayMap[m.cfg] || ''
   }));
 
   S = { po, bom, colors: po.colors.map(c => ({ ...c })) };
