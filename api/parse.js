@@ -64,7 +64,7 @@ QUY TẮC cfg: rowspan → lặp lại cfg cho từng hàng con.
 Chỉ trả hàng có matName và perPair > 0. JSON thuần, không backtick.`;
 
 // ── Prompt chỉ đọc PO (dùng cho Mistral call 1) ──────────────────────────────
-const PROMPT_PO = `Đây là đơn sản xuất giày (生产单). CHỈ đọc bảng danh sách màu và số lượng.
+const PROMPT_PO = `Đây là đơn sản xuất giày (生产单). Nhiệm vụ DUY NHẤT: đọc số lượng từng màu.
 
 Trả về DUY NHẤT JSON sau. Không giải thích, không markdown, không backtick.
 
@@ -74,19 +74,29 @@ Trả về DUY NHẤT JSON sau. Không giải thích, không markdown, không ba
   "style":   "style name (款名)",
   "cust":    "customer (客户)",
   "season":  "season (季节)",
-  "totalQ":  total_quantity_integer,
+  "totalQ":  total_quantity_number_from_订单总数_or_sum,
   "colors": [
-    { "id": "row NO.", "code": "full COLOR code/SKU cell text", "qty": integer, "qtyMissing": false }
+    { "id": "1", "code": "COLOR NAME hoặc SKU", "qty": 830, "qtyMissing": false }
   ]
 }
 
-QUY TẮC qty QUAN TRỌNG:
-- Bảng màu có nhiều cột phân phối: A单, B单, C单, D单, E单, F单, G单, H单...
-- Mỗi hàng màu có cột 合计 ở CUỐI CÙNG bên phải — đó là tổng số đôi cho màu đó.
-- TUYỆT ĐỐI KHÔNG cộng tay các cột A单/B单/... — chỉ lấy giá trị cột 合计.
-- qty là số nguyên 2-5 chữ số (vd: 830, 1150, 3565, 97, 694).
-- Nếu không đọc được rõ: qty:0, qtyMissing:true
-- id: số thứ tự hàng màu (1, 2, 3...) hoặc mã màu nếu có.
+═══ HƯỚNG DẪN ĐỌC BẢNG MÀU ═══
+
+Bảng màu trong đơn sản xuất có cấu trúc:
+| NO. | COLOR CODE/SKU | (nhiều cột phân phối nhỏ: A单 B单 C单...) | 合计 |
+
+Ví dụ bảng thực tế:
+  NO.1  NAVY/406/...   A单140  B单110  C单20  D单3565  ...  合计=3565 → qty=3565 (KHÔNG phải 140+110+20)
+  NO.2  BLACK/001/...  A单0    B单0    C单0   D单802   ...  合计=802  → qty=802
+  NO.3  KHAKI/...      ...                              合计=260   → qty=260
+
+NGUYÊN TẮC QUAN TRỌNG:
+1. Cột 合计 là cột CUỐI CÙNG bên phải của bảng màu → đó là số qty đúng.
+2. KHÔNG cộng các cột A单/B单/C单/... — chỉ lấy cột 合计.
+3. Nếu ô 合计 trống hoặc là dấu "-" → qty:0, qtyMissing:true.
+4. qty phải là số nguyên dương (10-9999), không bao giờ là 0 nếu đơn đang sản xuất.
+5. Quét từng hàng màu từ trên xuống, không bỏ sót hàng nào.
+6. id = số thứ tự hàng (1, 2, 3...), code = tên màu/SKU đầy đủ.
 JSON thuần, không backtick.`;
 
 // ── Prompt chỉ đọc BOM (dùng cho Mistral call 2) ─────────────────────────────
