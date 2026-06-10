@@ -170,8 +170,33 @@ function stripAndParse(raw, label) {
   const clean = raw.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
   try { return JSON.parse(clean); }
   catch (e) {
-    console.error(`${label} raw:`, raw.slice(0, 800));
-    throw new Error(`${label} JSON không hợp lệ: ${e.message}`);
+    // Thử recover JSON bị truncate: tìm vị trí object hợp lệ cuối cùng
+    console.warn(`${label} JSON parse failed (${e.message}), trying recovery...`);
+    try {
+      // Tìm vị trí "}" cuối cùng có thể đóng được object
+      // Thử cắt dần từ cuối cho đến khi parse được
+      let attempt = clean;
+      // Đóng các string/array/object còn hở
+      const opens = { '{': '}', '[': ']' };
+      const stack = [];
+      let inStr = false, escape = false;
+      for (const ch of attempt) {
+        if (escape) { escape = false; continue; }
+        if (ch === '\\') { escape = true; continue; }
+        if (ch === '"' && !escape) { inStr = !inStr; continue; }
+        if (!inStr) {
+          if (ch === '{' || ch === '[') stack.push(opens[ch]);
+          else if (ch === '}' || ch === ']') stack.pop();
+        }
+      }
+      // Đóng stack còn lại
+      if (inStr) attempt += '"';
+      while (stack.length) attempt += stack.pop();
+      return JSON.parse(attempt);
+    } catch (e2) {
+      console.error(`${label} raw (first 1200):`, raw.slice(0, 1200));
+      throw new Error(`${label} JSON không hợp lệ: ${e.message}`);
+    }
   }
 }
 
@@ -203,7 +228,7 @@ async function callGemini(apiKey, poPdfB64, bomPdfB64) {
       { inline_data: { mime_type: 'application/pdf', data: bomPdfB64 } },
       { text: PROMPT_COMBINED }
     ]}],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 8192, responseMimeType: 'application/json' }
+    generationConfig: { temperature: 0.1, maxOutputTokens: 16000, responseMimeType: 'application/json' }
   };
   const resp = await fetchWithRetry(url,
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
