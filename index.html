@@ -168,6 +168,8 @@ tfoot td{background:var(--surf2);font-weight:700;padding:10px 11px;
   .stats{grid-template-columns:1fr 1fr}
 }
 </style>
+  <!-- pdf.js for client-side PDF→image conversion (Mistral page fix) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module" id="pdfjs-script"></script>
 </head>
 <body>
 <div class="app">
@@ -1387,13 +1389,53 @@ async function runFromPDF() {
   }
 }
 
+// ── pdf.js: convert PDF base64 → array of PNG base64 (1 per page) ───────────
+// Dùng cho Mistral — gửi từng trang riêng thay vì cả PDF để tránh bị cắt trang
+async function pdfToPageImages(pdfB64, scale = 2.0) {
+  try {
+    // Load pdfjsLib dynamically (module script đã được thêm vào head)
+    const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+
+    const pdfBytes = Uint8Array.from(atob(pdfB64), c => c.charCodeAt(0));
+    const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+    const pages = [];
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page   = await pdf.getPage(i);
+      const vp     = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width  = vp.width;
+      canvas.height = vp.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+      // Convert to JPEG (smaller than PNG, good enough for OCR)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+      pages.push(dataUrl.split(',')[1]); // base64 only
+    }
+    return pages;
+  } catch (e) {
+    console.warn('pdfToPageImages failed:', e.message, '— falling back to PDF b64');
+    return null; // caller sẽ fallback về PDF b64 gốc
+  }
+}
+
 // ── Gemini proxy call: gửi 2 PDF → /api/parse → trả JSON ────────────────────
 // API key được giấu trong Vercel env var, frontend không chạm key trực tiếp.
 async function parseWithClaude(poPdfB64, bomPdfB64, provider = 'auto') {
+  // Nếu dùng Mistral: convert PO PDF thành từng trang ảnh để tránh bị cắt trang
+  let poPages = null;
+  const isMistral = provider === 'mistral' || provider === 'auto';
+  if (isMistral) {
+    document.getElementById('ai-status').textContent = 'Đang xử lý PDF thành ảnh…';
+    poPages = await pdfToPageImages(poPdfB64);
+    document.getElementById('ai-status').textContent = '';
+  }
+
   const resp = await fetch('/api/parse', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ poPdfB64, bomPdfB64, provider })
+    body: JSON.stringify({ poPdfB64, bomPdfB64, provider, poPages })
   });
 
   const data = await resp.json();
