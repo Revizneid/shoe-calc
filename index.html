@@ -1356,6 +1356,14 @@ async function runFromPDF() {
     badge.textContent = used === 'gemini' ? '🔵 Gemini' : '🟠 Mistral';
     badge.className = 'ai-used-badge ' + used;
 
+    // Guard: normalize arrays phòng AI trả thiếu field
+    if (!po || typeof po !== 'object')  throw new Error('AI không parse được đơn sản xuất (PO). Thử lại hoặc đổi provider.');
+    if (!bom || typeof bom !== 'object') throw new Error('AI không parse được BOM. Thử lại hoặc đổi provider.');
+    po.colors  = Array.isArray(po.colors)  ? po.colors  : [];
+    bom.mats   = Array.isArray(bom.mats)   ? bom.mats   : [];
+    if (!po.colors.length)  throw new Error('AI không tìm thấy danh sách màu trong PO. Kiểm tra file PDF.');
+    if (!bom.mats.length)   throw new Error('AI không tìm thấy nguyên liệu trong BOM. Kiểm tra file PDF.');
+
     const missingQty = po.colors.filter(c => c.qtyMissing || !c.qty);
     setStatus('st-po',
       missingQty.length ? 'warn' : 'ok',
