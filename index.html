@@ -138,6 +138,11 @@ tfoot td{background:var(--surf2);font-weight:700;padding:10px 11px;
 .or-sep::before{left:0}.or-sep::after{right:0}
 .ai-btn-row{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
 .ai-status{font-size:12px;color:var(--tx3)}
+.provider-select{font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--tx1);cursor:pointer;height:32px}
+.provider-select:focus{outline:none;border-color:var(--accent)}
+.ai-used-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--bg3);color:var(--tx2);margin-left:4px}
+.ai-used-badge.gemini{background:#e8f0fe;color:#1a73e8}
+.ai-used-badge.mistral{background:#fff3e0;color:#e65100}
 .alert{border-radius:var(--r);padding:9px 13px;font-size:12px;
   line-height:1.6;margin-top:10px;display:flex;gap:7px}
 .alert-info{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(26,61,110,.2)}
@@ -242,6 +247,12 @@ tfoot td{background:var(--surf2);font-weight:700;padding:10px 11px;
     <button id="ai-parse-btn" class="btn btn-primary" onclick="runFromPDF()">
       🤖 AI Parse PDF
     </button>
+    <select id="ai-provider" class="provider-select" title="Chọn AI provider">
+      <option value="auto">⚡ Auto (Gemini → Mistral)</option>
+      <option value="gemini">🔵 Gemini</option>
+      <option value="mistral">🟠 Mistral</option>
+    </select>
+    <span id="ai-used" class="ai-used-badge"></span>
     <button class="btn btn-ghost btn-sm" onclick="run()" title="Dùng khi đã paste .md vào ô trên">
       Parse .md →
     </button>
@@ -1329,12 +1340,21 @@ async function runFromPDF() {
   btn.textContent = '⏳ Đang phân tích…';
   sta.textContent = '';
   document.getElementById('global-err').textContent = '';
-  setStatus('st-po',  'warn', '⏳ Gemini đang đọc đơn sản xuất…');
-  setStatus('st-bom', 'warn', '⏳ Gemini đang đọc BOM…');
+  const provider = document.getElementById('ai-provider').value;
+  const providerLabel = { auto: 'Auto', gemini: 'Gemini', mistral: 'Mistral' }[provider];
+  setStatus('st-po',  'warn', `⏳ ${providerLabel} đang đọc đơn sản xuất…`);
+  setStatus('st-bom', 'warn', `⏳ ${providerLabel} đang đọc BOM…`);
+  document.getElementById('ai-used').textContent = '';
 
   try {
-    sta.textContent = 'Gửi 2 PDF lên Gemini API…';
-    const { po, bom } = await parseWithClaude(poPdfData.b64, bomPdfData.b64);
+    sta.textContent = `Gửi 2 PDF lên ${providerLabel} API…`;
+    const result = await parseWithClaude(poPdfData.b64, bomPdfData.b64, provider);
+    const { po, bom } = result;
+    // Hiện badge provider thực sự đã dùng
+    const used = result._provider || provider;
+    const badge = document.getElementById('ai-used');
+    badge.textContent = used === 'gemini' ? '🔵 Gemini' : '🟠 Mistral';
+    badge.className = 'ai-used-badge ' + used;
 
     const missingQty = po.colors.filter(c => c.qtyMissing || !c.qty);
     setStatus('st-po',
@@ -1354,17 +1374,17 @@ async function runFromPDF() {
     console.error('runFromPDF:', e);
   } finally {
     btn.disabled = false;
-    btn.textContent = '✨ AI Parse PDF (Gemini)';
+    btn.textContent = '🤖 AI Parse PDF';
   }
 }
 
 // ── Gemini proxy call: gửi 2 PDF → /api/parse → trả JSON ────────────────────
 // API key được giấu trong Vercel env var, frontend không chạm key trực tiếp.
-async function parseWithClaude(poPdfB64, bomPdfB64) {
+async function parseWithClaude(poPdfB64, bomPdfB64, provider = 'auto') {
   const resp = await fetch('/api/parse', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ poPdfB64, bomPdfB64 })
+    body: JSON.stringify({ poPdfB64, bomPdfB64, provider })
   });
 
   const data = await resp.json();
