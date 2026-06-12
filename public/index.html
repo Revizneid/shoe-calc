@@ -1333,6 +1333,111 @@ function handleBOMPdf(input) {
   r.readAsDataURL(f);
 }
 
+
+  const MAT_DICT = [
+    // Da thật
+    ['斯普伦多牛皮',     'SPLENDOR CALF'],
+    ['牛反绒皮',         'SUEDE COWHIDE'],
+    ['牛绒皮',           'SUEDE COWHIDE'],
+    ['牛皮',             'COWHIDE LEATHER'],
+    ['软羊皮',           'SOFT SHEEPSKIN'],
+    ['羊皮',             'SHEEPSKIN'],
+    ['羊京皮',           'KID LEATHER'],
+    ['羊羔皮',           'LAMBSKIN'],
+    ['小羊皮',           'LAMBSKIN'],
+    ['软光七羊皮',       'SOFT PATENT KID'],
+    ['光七羊皮',         'PATENT KID'],
+    ['苯染蜡感牛皮',     'ANILINE WAX CALF'],
+    ['纯色马毛',         'SOLID HAIRCALF'],
+    ['马毛',             'HAIRCALF'],
+    ['绒面革',           'SUEDE'],
+    ['反绒',             'NUBUCK'],
+    ['牛反绒',           'NUBUCK COWHIDE'],
+    ['水洗皮',           'WASHED LEATHER'],
+    ['压纹牛皮',         'EMBOSSED CALF'],
+    ['漆皮',             'PATENT LEATHER'],
+    // PU / PVC
+    ['半雾面羊纹PU',     'SEMI-MATTE CTD NAPPA PU'],
+    ['半露面羊纹PU',     'SEMI-MATTE CTD NAPPA PU'],  // OCR typo variant
+    ['半雾面羊纹pu',     'SEMI-MATTE CTD NAPPA PU'],
+    ['半雾面羊纹pu',     'SEMI-MATTE CTD NAPPA PU'],
+    ['羊纹光七PU',       'PATENT NAPPA PU'],
+    ['羊纹PU',           'NAPPA PU'],
+    ['软羊绒PU',         'SOFT VELVET PU'],
+    ['软羊纹PU',         'SOFT NAPPA PU'],
+    ['羊纹无纺PU',       'NAPPA NON-WOVEN PU'],
+    ['小号卵石纹MK LOGO PVC', 'SMALL PEBBLE MK LOGO PVC'],
+    ['卵石纹PVC',        'PEBBLE PVC'],
+    ['PVC',              'PVC'],
+    ['PU',               'PU SYNTHETIC'],
+    // Lót / vải
+    ['水性绒面革',       'FAUX SUEDE LINING'],
+    ['水性纤维革',       'WATER-BASED MICROFIBER'],
+    ['超纤',             'MICROFIBER'],
+    ['无纺布',           'NON-WOVEN FABRIC'],
+    ['软羊绒',           'SOFT VELVET'],
+    ['织物',             'FABRIC'],
+    ['网布',             'MESH FABRIC'],
+    ['布底',             'FABRIC BACKING'],
+    ['内里',             'LINING'],
+    ['垫脚里',           'INSOLE LINING'],
+    ['后套里',           'BACK LINING'],
+    // Phụ liệu
+    ['蝴蝶结',           'BOW TRIM'],
+    ['鞋头滚边',         'TOE WELT'],
+    ['包中底边',         'MID-SOLE BINDING'],
+    ['鞋口包边',         'COLLAR BINDING'],
+  ];
+
+  // ── ERP dict (loaded async from /mat-dict.json) ──────────────────────────
+  let ERP_DICT = null;  // { zh_key: { en, unit, cls } } sorted by key length desc
+
+  async function loadErpDict() {
+    if (ERP_DICT) return;
+    try {
+      const resp = await fetch('/mat-dict.json');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const raw = await resp.json();
+      // Sort keys by length desc for longest-match-first lookup
+      ERP_DICT = Object.entries(raw).sort((a, b) => b[0].length - a[0].length);
+      console.log(`ERP dict loaded: ${ERP_DICT.length} entries`);
+    } catch(e) {
+      console.warn('ERP dict load failed:', e.message, '— falling back to built-in dict');
+      ERP_DICT = [];
+    }
+  }
+
+  // ── Helper: lookup dict → trả engName nếu có ─────────────────────────────
+  function lookupMatDict(zhName) {
+    if (!zhName) return '';
+    const lower = zhName.toLowerCase();
+
+    // 1. Try ERP dict first (from Vercel /mat-dict.json)
+    if (ERP_DICT && ERP_DICT.length > 0) {
+      for (const [zh, v] of ERP_DICT) {
+        if (lower.includes(zh.toLowerCase())) return v.en;
+      }
+    }
+
+    // 2. Fallback: built-in MAT_DICT
+    const sorted = [...MAT_DICT].sort((a, b) => b[0].length - a[0].length);
+    for (const [zh, en] of sorted) {
+      if (lower.includes(zh.toLowerCase())) return en;
+    }
+    return '';
+  }
+
+  // ── Helper: tách "中文名/ENGLISH NAME" → { zh, en } ──────────────────────
+  function splitZhEn(str) {
+    if (!str) return { zh: '', en: '' };
+    // Tìm vị trí '/' đầu tiên mà sau nó có ký tự Latin (A-Z)
+    const m = str.match(/^([\s\S]*?)\/([A-Z][A-Z0-9 \-().,'&]+)/);
+    if (m) return { zh: m[1].trim(), en: m[2].trim() };
+    // Không tìm thấy → kiểm tra toàn bộ string có phải ASCII không
+    if (/^[A-Za-z0-9 \-().,'&%\/]+$/.test(str.trim())) return { zh: '', en: str.trim() };
+    return { zh: str.trim(), en: '' };
+  }
+
 async function runFromPDF() {
   if (!poPdfData) { setStatus('st-po',  'err', '✗ Chưa chọn PDF đơn sản xuất'); return; }
   if (!bomPdfData){ setStatus('st-bom', 'err', '✗ Chưa chọn PDF BOM');           return; }
@@ -1479,109 +1584,6 @@ function runFromData(poData, bomData) {
 
   // ── Từ điển vật liệu giày: tên Trung → tên Anh ngành ────────────────────────
   // Key: chuỗi lowercase, match substring. Ưu tiên match dài hơn trước.
-  const MAT_DICT = [
-    // Da thật
-    ['斯普伦多牛皮',     'SPLENDOR CALF'],
-    ['牛反绒皮',         'SUEDE COWHIDE'],
-    ['牛绒皮',           'SUEDE COWHIDE'],
-    ['牛皮',             'COWHIDE LEATHER'],
-    ['软羊皮',           'SOFT SHEEPSKIN'],
-    ['羊皮',             'SHEEPSKIN'],
-    ['羊京皮',           'KID LEATHER'],
-    ['羊羔皮',           'LAMBSKIN'],
-    ['小羊皮',           'LAMBSKIN'],
-    ['软光七羊皮',       'SOFT PATENT KID'],
-    ['光七羊皮',         'PATENT KID'],
-    ['苯染蜡感牛皮',     'ANILINE WAX CALF'],
-    ['纯色马毛',         'SOLID HAIRCALF'],
-    ['马毛',             'HAIRCALF'],
-    ['绒面革',           'SUEDE'],
-    ['反绒',             'NUBUCK'],
-    ['牛反绒',           'NUBUCK COWHIDE'],
-    ['水洗皮',           'WASHED LEATHER'],
-    ['压纹牛皮',         'EMBOSSED CALF'],
-    ['漆皮',             'PATENT LEATHER'],
-    // PU / PVC
-    ['半雾面羊纹PU',     'SEMI-MATTE CTD NAPPA PU'],
-    ['半露面羊纹PU',     'SEMI-MATTE CTD NAPPA PU'],  // OCR typo variant
-    ['半雾面羊纹pu',     'SEMI-MATTE CTD NAPPA PU'],
-    ['半雾面羊纹pu',     'SEMI-MATTE CTD NAPPA PU'],
-    ['羊纹光七PU',       'PATENT NAPPA PU'],
-    ['羊纹PU',           'NAPPA PU'],
-    ['软羊绒PU',         'SOFT VELVET PU'],
-    ['软羊纹PU',         'SOFT NAPPA PU'],
-    ['羊纹无纺PU',       'NAPPA NON-WOVEN PU'],
-    ['小号卵石纹MK LOGO PVC', 'SMALL PEBBLE MK LOGO PVC'],
-    ['卵石纹PVC',        'PEBBLE PVC'],
-    ['PVC',              'PVC'],
-    ['PU',               'PU SYNTHETIC'],
-    // Lót / vải
-    ['水性绒面革',       'FAUX SUEDE LINING'],
-    ['水性纤维革',       'WATER-BASED MICROFIBER'],
-    ['超纤',             'MICROFIBER'],
-    ['无纺布',           'NON-WOVEN FABRIC'],
-    ['软羊绒',           'SOFT VELVET'],
-    ['织物',             'FABRIC'],
-    ['网布',             'MESH FABRIC'],
-    ['布底',             'FABRIC BACKING'],
-    ['内里',             'LINING'],
-    ['垫脚里',           'INSOLE LINING'],
-    ['后套里',           'BACK LINING'],
-    // Phụ liệu
-    ['蝴蝶结',           'BOW TRIM'],
-    ['鞋头滚边',         'TOE WELT'],
-    ['包中底边',         'MID-SOLE BINDING'],
-    ['鞋口包边',         'COLLAR BINDING'],
-  ];
-
-  // ── ERP dict (loaded async from /mat-dict.json) ──────────────────────────
-  let ERP_DICT = null;  // { zh_key: { en, unit, cls } } sorted by key length desc
-
-  async function loadErpDict() {
-    if (ERP_DICT) return;
-    try {
-      const resp = await fetch('/mat-dict.json');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const raw = await resp.json();
-      // Sort keys by length desc for longest-match-first lookup
-      ERP_DICT = Object.entries(raw).sort((a, b) => b[0].length - a[0].length);
-      console.log(`ERP dict loaded: ${ERP_DICT.length} entries`);
-    } catch(e) {
-      console.warn('ERP dict load failed:', e.message, '— falling back to built-in dict');
-      ERP_DICT = [];
-    }
-  }
-
-  // ── Helper: lookup dict → trả engName nếu có ─────────────────────────────
-  function lookupMatDict(zhName) {
-    if (!zhName) return '';
-    const lower = zhName.toLowerCase();
-
-    // 1. Try ERP dict first (from Vercel /mat-dict.json)
-    if (ERP_DICT && ERP_DICT.length > 0) {
-      for (const [zh, v] of ERP_DICT) {
-        if (lower.includes(zh.toLowerCase())) return v.en;
-      }
-    }
-
-    // 2. Fallback: built-in MAT_DICT
-    const sorted = [...MAT_DICT].sort((a, b) => b[0].length - a[0].length);
-    for (const [zh, en] of sorted) {
-      if (lower.includes(zh.toLowerCase())) return en;
-    }
-    return '';
-  }
-
-  // ── Helper: tách "中文名/ENGLISH NAME" → { zh, en } ──────────────────────
-  function splitZhEn(str) {
-    if (!str) return { zh: '', en: '' };
-    // Tìm vị trí '/' đầu tiên mà sau nó có ký tự Latin (A-Z)
-    const m = str.match(/^([\s\S]*?)\/([A-Z][A-Z0-9 \-().,'&]+)/);
-    if (m) return { zh: m[1].trim(), en: m[2].trim() };
-    // Không tìm thấy → kiểm tra toàn bộ string có phải ASCII không
-    if (/^[A-Za-z0-9 \-().,'&%\/]+$/.test(str.trim())) return { zh: '', en: str.trim() };
-    return { zh: str.trim(), en: '' };
-  }
 
   const bom = {
     orderNo: bomData.orderNo || '',
