@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Material Calculator · Shoe Production</title>
+<title>Shoe Production · Material Calculator</title>
 <style>
 :root {
   --bg:#f5f4f0; --surf:#fff; --surf2:#f0ede6; --bd:rgba(0,0,0,.11);
@@ -45,14 +45,38 @@ a{color:var(--blue)}
 .ipanel{background:var(--surf);border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden}
 .ipanel-head{padding:10px 14px;background:var(--surf2);border-bottom:1px solid var(--bd);
   display:flex;align-items:center;gap:10px}
-.itag{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  background:var(--tx);color:#fff;padding:2px 7px;border-radius:3px}
-.ilabel{font-size:13px;font-weight:600}
-.ipanel textarea{width:100%;height:190px;padding:12px 14px;border:none;resize:vertical;
+.itag{font-size:11px;font-weight:700;width:20px;height:20px;line-height:20px;
+  text-align:center;background:var(--tx);color:#fff;border-radius:50%;flex-shrink:0}
+.ilabel{font-size:13px;font-weight:600;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ilabel-cn{font-size:11px;font-weight:400;color:var(--tx3)}
+
+/* DROP ZONE */
+.drop-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;padding:32px 16px;cursor:pointer;border:2px dashed var(--bd2);
+  border-radius:var(--r);margin:12px 14px;transition:all .15s;background:var(--bg)}
+.drop-zone:hover{border-color:var(--tx);background:var(--surf2)}
+.drop-zone.has-file{border-style:solid;border-color:var(--green);background:var(--green-bg)}
+.drop-icon{font-size:28px;line-height:1}
+.drop-text{font-size:13px;font-weight:600;color:var(--tx)}
+.drop-zone.has-file .drop-text{color:var(--green)}
+.drop-hint{font-size:11px;color:var(--tx3)}
+.drop-zone.has-file .drop-hint{display:none}
+
+/* LEGACY PASTE */
+.legacy-paste{border-top:1px solid var(--bd)}
+.legacy-paste summary{padding:8px 14px;font-size:11px;color:var(--tx3);cursor:pointer;
+  user-select:none;list-style:none}
+.legacy-paste summary::-webkit-details-marker{display:none}
+.legacy-paste summary:hover{color:var(--tx2)}
+.legacy-paste summary::before{content:'▸ ';display:inline-block}
+.legacy-paste[open] summary::before{content:'▾ '}
+.ipanel textarea{width:100%;height:160px;padding:0 14px 12px;border:none;resize:vertical;
   font-family:'Courier New',monospace;font-size:11.5px;line-height:1.5;
   color:var(--tx);background:transparent;outline:none}
 .ipanel textarea::placeholder{color:var(--tx3)}
+
 .istatus{padding:6px 14px;font-size:12px;min-height:30px;display:flex;align-items:center;gap:5px}
+.istatus:empty{min-height:0;padding:0}
 .ok{color:var(--green);background:var(--green-bg)}
 .err{color:var(--red);background:var(--red-bg)}
 .warn{color:var(--amber);background:var(--amber-bg)}
@@ -136,17 +160,46 @@ tfoot td{background:var(--surf2);font-weight:700;padding:10px 11px;
 .or-sep::before,.or-sep::after{content:'';position:absolute;top:50%;width:40%;
   height:1px;background:var(--bd2)}
 .or-sep::before{left:0}.or-sep::after{right:0}
-.ai-btn-row{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+.action-bar{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}
+.btn-lg{padding:11px 28px;font-size:14px}
 .ai-status{font-size:12px;color:var(--tx3)}
-.provider-select{font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--tx1);cursor:pointer;height:32px}
-.provider-select:focus{outline:none;border-color:var(--accent)}
-.ai-used-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--bg3);color:var(--tx2);margin-left:4px}
-.ai-used-badge.gemini{background:#e8f0fe;color:#1a73e8}
-.ai-used-badge.mistral{background:#fff3e0;color:#e65100}
+.global-err{font-size:12px;color:var(--red);font-weight:600}
+.global-err:empty{display:none}
+
+.adv-toggle{margin-left:auto;background:none;border:none;cursor:pointer;
+  font-size:12px;color:var(--tx3);padding:4px 0;display:flex;align-items:center;gap:5px;
+  font-family:inherit;transition:color .15s}
+.adv-toggle:hover{color:var(--tx2)}
+.adv-toggle #adv-caret{display:inline-block;transition:transform .15s;font-size:10px}
+.adv-toggle.open #adv-caret{transform:rotate(90deg)}
+
+.adv-options{margin-top:10px;padding:14px 16px;background:var(--surf2);
+  border:1px solid var(--bd);border-radius:var(--rl);
+  display:flex;flex-direction:column;gap:10px}
+.adv-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.adv-label{font-size:12px;color:var(--tx2);font-weight:600;min-width:160px}
+.provider-select{font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);
+  background:var(--surf);color:var(--tx);cursor:pointer;height:32px;font-family:inherit}
+.provider-select:focus{outline:none;border-color:var(--tx)}
+.ai-used-badge{font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;
+  background:var(--surf2);color:var(--tx2)}
+.ai-used-badge:empty{display:none}
+.ai-used-badge.gemini{background:var(--green-bg);color:var(--green)}
+.ai-used-badge.mistral{background:var(--blue-bg);color:var(--blue)}
 .alert{border-radius:var(--r);padding:9px 13px;font-size:12px;
   line-height:1.6;margin-top:10px;display:flex;gap:7px}
 .alert-info{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(26,61,110,.2)}
 .pdf-upload-row{margin-bottom:16px}
+.opt-panel summary{list-style:none;cursor:pointer}
+.opt-panel summary::-webkit-details-marker{display:none}
+.opt-summary{display:flex;align-items:center;gap:10px}
+.opt-tag{background:var(--surf2);color:var(--tx3);border:1px solid var(--bd2);
+  font-weight:700;font-size:13px}
+.opt-panel[open] .opt-tag{background:var(--blue-bg);color:var(--blue);border-color:transparent}
+.opt-panel[open] .opt-tag::before{content:'−'}
+.opt-panel:not([open]) .opt-tag::before{content:'+'}
+.opt-tag{font-size:0}
+.opt-tag::before{font-size:14px}
 .pdf-qty-table{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .pdf-qty-chip{background:var(--surf2);border:1px solid var(--bd2);border-radius:4px;
   padding:3px 7px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px}
@@ -176,96 +229,114 @@ tfoot td{background:var(--surf2);font-weight:700;padding:10px 11px;
 
 <nav class="nav">
   <span class="nav-title">Material Calculator · Shoe Production</span>
-  <span class="nav-badge">Stage 2 · AI PDF parsing</span>
+  <span class="nav-badge">PDF Import</span>
 </nav>
 
 <!-- ── IMPORT ── -->
 <section class="import-section" id="sec-import">
   <p class="import-intro">
-    <strong>Mới:</strong> Upload trực tiếp file PDF — AI tự đọc cả đơn sản xuất lẫn BOM, không cần qua ocr.z.ai.<br>
-    <span style="color:var(--tx3)">Hoặc dùng cách cũ: paste nội dung .md vào ô bên dưới.</span>
+    Upload your <strong>Production Order</strong> and <strong>BOM</strong> PDFs below, then click
+    <strong>Process Files</strong> to automatically extract color quantities and material requirements.
   </p>
   <div class="import-grid">
     <div class="ipanel">
       <div class="ipanel-head">
-        <span class="itag">FILE 1</span>
-        <span class="ilabel">Production Order (生产单)</span>
+        <span class="itag">1</span>
+        <span class="ilabel">Production Order<span class="ilabel-cn">生产单</span></span>
       </div>
-      <div class="pdf-pick-row">
-        <label class="btn btn-ghost btn-sm" style="cursor:pointer">
-          📄 Chọn PDF
-          <input type="file" accept="application/pdf,.pdf" style="display:none"
-                 onchange="handlePOPdf(this)">
-        </label>
-        <span id="po-pdf-name" class="pdf-pick-name">Chưa chọn file</span>
-      </div>
-      <div class="or-sep">hoặc paste .md</div>
-      <textarea id="ta-po" spellcheck="false"
-        placeholder="Paste Production Order .md content here…"></textarea>
+      <label class="drop-zone" id="po-drop-zone" for="po-file-input">
+        <input type="file" id="po-file-input" accept="application/pdf,.pdf" style="display:none"
+               onchange="handlePOPdf(this)">
+        <span class="drop-icon">📄</span>
+        <span class="drop-text" id="po-pdf-name">Click to choose PDF</span>
+        <span class="drop-hint">or drag and drop</span>
+      </label>
       <div class="istatus" id="st-po"></div>
+      <details class="legacy-paste">
+        <summary>Paste text instead</summary>
+        <textarea id="ta-po" spellcheck="false"
+          placeholder="Paste Production Order .md content here…"></textarea>
+      </details>
     </div>
     <div class="ipanel">
       <div class="ipanel-head">
-        <span class="itag">FILE 2</span>
-        <span class="ilabel">BOM · Material Usage (主面料用量表)</span>
+        <span class="itag">2</span>
+        <span class="ilabel">Material Usage (BOM)<span class="ilabel-cn">主面料用量表</span></span>
       </div>
-      <div class="pdf-pick-row">
-        <label class="btn btn-ghost btn-sm" style="cursor:pointer">
-          📄 Chọn PDF
-          <input type="file" accept="application/pdf,.pdf" style="display:none"
-                 onchange="handleBOMPdf(this)">
-        </label>
-        <span id="bom-pdf-name" class="pdf-pick-name">Chưa chọn file</span>
-      </div>
-      <div class="or-sep">hoặc paste .md</div>
-      <textarea id="ta-bom" spellcheck="false"
-        placeholder="Paste BOM .md content here…"></textarea>
+      <label class="drop-zone" id="bom-drop-zone" for="bom-file-input">
+        <input type="file" id="bom-file-input" accept="application/pdf,.pdf" style="display:none"
+               onchange="handleBOMPdf(this)">
+        <span class="drop-icon">📄</span>
+        <span class="drop-text" id="bom-pdf-name">Click to choose PDF</span>
+        <span class="drop-hint">or drag and drop</span>
+      </label>
       <div class="istatus" id="st-bom"></div>
+      <details class="legacy-paste">
+        <summary>Paste text instead</summary>
+        <textarea id="ta-bom" spellcheck="false"
+          placeholder="Paste BOM .md content here…"></textarea>
+      </details>
     </div>
   </div>
   <!-- Image OCR for extracting color quantities -->
   <div class="pdf-upload-row">
-    <div class="ipanel" style="flex:1">
-      <div class="ipanel-head">
-        <span class="itag" style="background:var(--blue)">OPT</span>
-        <span class="ilabel">Ảnh đơn sản xuất
-          <span style="font-size:11px;color:var(--tx3);font-weight:400"> — upload ảnh PO để tự đọc số lượng từng màu</span>
+    <details class="ipanel opt-panel">
+      <summary class="ipanel-head opt-summary">
+        <span class="itag opt-tag">+</span>
+        <span class="ilabel">Production Order Photo
+          <span class="ilabel-cn" style="font-weight:400">— optional, auto-read quantities from a photo</span>
         </span>
-      </div>
+      </summary>
       <div style="padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <label class="btn btn-ghost btn-sm" style="cursor:pointer">
-          📷 Chọn ảnh PO
+          📷 Choose Image
           <input type="file" id="pdf-input" accept="image/*" multiple style="display:none" onchange="handlePDFUpload(this)">
         </label>
-        <span id="pdf-status" style="font-size:12px;color:var(--tx3)">Chưa chọn file</span>
+        <span id="pdf-status" style="font-size:12px;color:var(--tx3)">No file selected</span>
         <button class="btn btn-ghost btn-sm" id="pdf-read-btn" style="display:none" onclick="extractQtyFromPDF()">
-          🔍 Đọc số lượng (OCR)
+          🔍 Read Quantities
         </button>
       </div>
       <div id="pdf-result" style="padding:0 14px 10px;font-size:12px;color:var(--tx2);display:none"></div>
-    </div>
+    </details>
   </div>
-  <div class="ai-btn-row">
-    <button id="ai-parse-btn" class="btn btn-primary" onclick="runFromPDF()">
-      🤖 AI Parse PDF
+  <div class="action-bar">
+    <button id="ai-parse-btn" class="btn btn-primary btn-lg" onclick="runFromPDF()">
+      Process Files
     </button>
-    <select id="ai-provider" class="provider-select" title="Chọn AI provider">
-      <option value="auto">⚡ Auto (Gemini → Mistral)</option>
-      <option value="gemini">🔵 Gemini</option>
-      <option value="mistral">🟠 Mistral</option>
-    </select>
-    <select id="engname-source" class="provider-select" title="Nguồn lấy tên tiếng Anh vật liệu">
-      <option value="ai">🤖 Tên Anh từ AI (PDF/ảnh)</option>
-      <option value="erp" selected>📖 Tra ERP dict (mat-dict.json)</option>
-      <option value="builtin">📋 Tra dict nội bộ (built-in)</option>
-    </select>
-    <span id="ai-used" class="ai-used-badge"></span>
-    <button class="btn btn-ghost btn-sm" onclick="run()" title="Dùng khi đã paste .md vào ô trên">
-      Parse .md →
-    </button>
-    <button class="btn btn-ghost btn-sm no-print" onclick="loadDemo()">Load Demo</button>
     <span id="ai-status" class="ai-status"></span>
-    <span id="global-err" style="font-size:12px;color:var(--red)"></span>
+    <span id="ai-used" class="ai-used-badge"></span>
+    <span id="global-err" class="global-err"></span>
+
+    <button class="adv-toggle" type="button" onclick="toggleAdvanced()">
+      <span id="adv-caret">▸</span> Advanced options
+    </button>
+  </div>
+
+  <div id="adv-options" class="adv-options" style="display:none">
+    <div class="adv-row">
+      <label class="adv-label">Processing engine</label>
+      <select id="ai-provider" class="provider-select" title="Processing engine">
+        <option value="auto">Auto (recommended)</option>
+        <option value="gemini">Engine A</option>
+        <option value="mistral">Engine B</option>
+      </select>
+    </div>
+    <div class="adv-row">
+      <label class="adv-label">English material names</label>
+      <select id="engname-source" class="provider-select" title="English name source">
+        <option value="ai">From document text</option>
+        <option value="erp" selected>From ERP catalog</option>
+        <option value="builtin">From built-in reference</option>
+      </select>
+    </div>
+    <div class="adv-row">
+      <label class="adv-label">Legacy / debug</label>
+      <button class="btn btn-ghost btn-sm" onclick="run()" title="Use when .md content is pasted above">
+        Parse .md →
+      </button>
+      <button class="btn btn-ghost btn-sm no-print" onclick="loadDemo()">Load Demo</button>
+    </div>
   </div>
 </section>
 
@@ -846,6 +917,14 @@ function setStatus(id, type, msg) {
   el.textContent = msg;
 }
 
+function toggleAdvanced() {
+  const panel = document.getElementById('adv-options');
+  const toggle = document.querySelector('.adv-toggle');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'flex';
+  toggle.classList.toggle('open', !isOpen);
+}
+
 function run() {
   const poTxt  = document.getElementById('ta-po').value.trim();
   const bomTxt = document.getElementById('ta-bom').value.trim();
@@ -957,7 +1036,7 @@ function handlePDFUpload(input) {
     ocrImages.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
     const n = ocrImages.length;
     document.getElementById('pdf-status').textContent =
-      n === 1 ? ocrImages[0].name : `${n} ảnh (${ocrImages.map(i=>i.name).join(', ').slice(0,60)})`;
+      n === 1 ? ocrImages[0].name : `${n} images (${ocrImages.map(i=>i.name).join(', ').slice(0,60)})`;
     document.getElementById('pdf-status').style.color = 'var(--tx2)';
     document.getElementById('pdf-read-btn').style.display = 'inline-flex';
     document.getElementById('pdf-result').style.display = 'none';
@@ -970,7 +1049,7 @@ async function extractQtyFromPDF() {
   const resultEl = document.getElementById('pdf-result');
   const statusEl = document.getElementById('pdf-status');
 
-  btn.textContent = '⏳ Đang phân tích...';
+  btn.textContent = '⏳ Processing...';
   btn.disabled = true;
   resultEl.style.display = 'block';
 
@@ -985,15 +1064,15 @@ async function extractQtyFromPDF() {
     const pageDebug  = [];
 
     for (let pi = 0; pi < ocrImages.length; pi++) {
-      const label = `Ảnh ${pi+1}/${ocrImages.length}`;
-      resultEl.innerHTML = `<div style="color:var(--tx3)">${label}: đang OCR…</div>`;
+      const label = `Image ${pi+1}/${ocrImages.length}`;
+      resultEl.innerHTML = `<div style="color:var(--tx3)">${label}: reading…</div>`;
       const { entries, debug } = await ocrImageForQtys(ocrImages[pi].dataUrl);
       entries.forEach(e => allEntries.push({ ...e, page: pi+1 }));
       pageDebug.push({ page: pi+1, name: ocrImages[pi].name, entries, ...debug });
     }
 
     if (!allEntries.length)
-      throw new Error('Không đọc được số lượng từ ảnh. Kiểm tra độ sáng / nét.');
+      throw new Error('Could not read quantities from image. Check brightness/focus.');
 
     // ── Map entries → colorIds ─────────────────────────────────────────────
     // Pass 1: entries with confirmed NO from column-pairing  → direct assign
@@ -1010,7 +1089,7 @@ async function extractQtyFromPDF() {
       .filter(id => mapped[id] !== undefined)
       .map(id => ({ no: id, qty: mapped[id], fromOCR: true }));
 
-    if (!results.length) throw new Error('Không ghép được số lượng với màu sắc.');
+    if (!results.length) throw new Error('Could not match quantities with colors.');
 
     // Preserve MD-parsed qtys for colors OCR didn't cover
     const covered = new Set(results.map(r => r.no));
@@ -1026,7 +1105,7 @@ async function extractQtyFromPDF() {
       `<div style="color:var(--red);margin-bottom:10px">✗ ${e.message}</div>${manualFallbackHTML()}`;
     console.error('extractQtyFromPDF:', e);
   } finally {
-    btn.textContent = '🔍 Đọc số lượng';
+    btn.textContent = '🔍 Read Quantities';
     btn.disabled = false;
   }
 }
@@ -1036,7 +1115,7 @@ function loadImg(src) {
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => res(img);
-    img.onerror = () => rej(new Error('Không tải được ảnh'));
+    img.onerror = () => rej(new Error('Failed to load image'));
     img.src = src;
   });
 }
@@ -1089,7 +1168,7 @@ async function ocrImageForQtys(dataUrl) {
   }
   const parsed = json.ParsedResults?.[0];
   if (!parsed || parsed.FileParseExitCode !== 1)
-    throw new Error('Ảnh không đọc được (code ' + (parsed?.FileParseExitCode ?? '?') + ')');
+    throw new Error('Image could not be read (code ' + (parsed?.FileParseExitCode ?? '?') + ')');
 
   // No overlay → raw-text fallback
   if (!parsed.TextOverlay?.Lines?.length) {
@@ -1212,7 +1291,7 @@ function parseRawTextForQtys(text) {
 
 // ── Apply & display ───────────────────────────────────────────────────────────
 function applyExtractedQty(parsed, resultEl, statusEl) {
-  if (!parsed?.colors?.length) throw new Error('Không có dữ liệu màu');
+  if (!parsed?.colors?.length) throw new Error('No color data found');
   const extracted = {};
   parsed.colors.forEach(c => { extracted[String(c.no)] = parseInt(c.qty); });
   _pdfExtractedQty = extracted;
@@ -1231,12 +1310,12 @@ function applyExtractedQty(parsed, resultEl, statusEl) {
   const chips = parsed.colors.map(c => {
     const label = S?.colors.find(x => x.id === c.no)?.colorName
                   ? S.colors.find(x => x.id === c.no).colorName.slice(0,14)
-                  : `Màu ${c.no}`;
+                  : `Color ${c.no}`;
     return `<span class="pdf-qty-chip${c.fromOCR ? ' ocr' : ''}">
       <span class="chip-lbl">${label}</span>
       <input type="number" value="${c.qty}" min="0" step="1"
              data-cid="${c.no}" onchange="patchOCRQty('${c.no}',this.value)">
-      ${c.fromOCR ? '<span title="Đọc từ OCR" style="color:var(--blue);font-size:10px">✦</span>' : ''}
+      ${c.fromOCR ? '<span title="Read via OCR" style="color:var(--blue);font-size:10px">✦</span>' : ''}
     </span>`;
   }).join('');
 
@@ -1245,10 +1324,10 @@ function applyExtractedQty(parsed, resultEl, statusEl) {
   if (parsed.pageDebug?.length) {
     const rows = parsed.pageDebug.map(p => {
       const v = (p.entries||[]).map(e => e.no ? `${e.no}→${e.qty}` : `?→${e.qty}`).join(', ');
-      return `<div><b>Ảnh ${p.page}</b> [${p.strategy||'?'}]: ${v||'–'}</div>`;
+      return `<div><b>Image ${p.page}</b> [${p.strategy||'?'}]: ${v||'–'}</div>`;
     }).join('');
     dbg = `<details style="margin-top:8px">
-      <summary style="font-size:10px;color:var(--tx3);cursor:pointer;user-select:none">▸ Chi tiết OCR</summary>
+      <summary style="font-size:10px;color:var(--tx3);cursor:pointer;user-select:none">▸ OCR Details</summary>
       <div style="font-size:10px;color:var(--tx3);margin-top:4px;line-height:1.9;
         font-family:monospace;background:var(--surf2);padding:6px 8px;border-radius:4px">${rows}</div>
     </details>`;
@@ -1257,10 +1336,10 @@ function applyExtractedQty(parsed, resultEl, statusEl) {
   const ocrCount = parsed.colors.filter(c => c.fromOCR).length;
   resultEl.innerHTML = `
     <div style="color:var(--green);font-weight:600;margin-bottom:6px">
-      ✓ ${parsed.colors.length} màu — ${ocrCount} từ OCR (✦ có thể sửa)</div>
+      ✓ ${parsed.colors.length} colors — ${ocrCount} from OCR (✦ editable)</div>
     <div class="pdf-qty-table">${chips}</div>${dbg}`;
   resultEl.style.display = 'block';
-  if (statusEl) { statusEl.textContent = '✓ Đã apply'; statusEl.style.color = 'var(--green)'; }
+  if (statusEl) { statusEl.textContent = '✓ Applied'; statusEl.style.color = 'var(--green)'; }
 }
 
 // Inline edit: update one color quantity without re-running OCR
@@ -1274,7 +1353,7 @@ function patchOCRQty(colorId, rawVal) {
 }
 
 function manualFallbackHTML() {
-  return `<div style="font-size:11px;color:var(--tx2);font-weight:600;margin-bottom:6px">Nhập thủ công:</div>
+  return `<div style="font-size:11px;color:var(--tx2);font-weight:600;margin-bottom:6px">Manual entry:</div>
     <textarea id="manual-json-input"
       placeholder='{"colors":[{"no":"1","qty":792},{"no":"2","qty":1089},{"no":"4","qty":1073}]}'
       style="width:100%;box-sizing:border-box;height:60px;font-size:11px;font-family:monospace;
@@ -1294,11 +1373,11 @@ function applyManualJSON() {
   try {
     const parsed = JSON.parse(raw);
     applyExtractedQty(parsed, document.getElementById('pdf-result'), document.getElementById('pdf-status'));
-  } catch(e) { alert('JSON không hợp lệ:\n' + e.message); }
+  } catch(e) { alert('Invalid JSON:\n' + e.message); }
 }
 
 
-// ═══════════════════════ AI PDF PARSING ═══════════════════════
+// ═══════════════════════ DOCUMENT PROCESSING ═══════════════════════
 // Uploads PDFs directly → Claude API reads both docs in one call →
 // returns structured JSON → bypasses parsePO/parseBOM entirely.
 // Workflow: B1 (ocr.z.ai) + B2 (copy-paste) + B3 (image convert) all eliminated.
@@ -1310,14 +1389,15 @@ function handlePOPdf(input) {
   const f = input.files[0];
   if (!f) return;
   if (f.size > 20 * 1024 * 1024) {
-    setStatus('st-po', 'err', '✗ File quá lớn (> 20MB). Nén PDF trước khi upload.'); return;
+    setStatus('st-po', 'err', '✗ File too large (> 20MB). Please compress the PDF first.'); return;
   }
   const r = new FileReader();
   r.onload = e => {
     poPdfData = { name: f.name, b64: e.target.result.split(',')[1], size: f.size };
-    document.getElementById('po-pdf-name').textContent = `✓ ${f.name} (${(f.size/1024).toFixed(0)} KB)`;
-    document.getElementById('po-pdf-name').className = 'pdf-pick-name loaded';
-    setStatus('st-po', 'ok', `PDF sẵn sàng — nhấn "AI Parse PDF" để phân tích`);
+    const zone = input.closest('.drop-zone');
+    zone.classList.add('has-file');
+    document.getElementById('po-pdf-name').textContent = `${f.name} (${(f.size/1024).toFixed(0)} KB)`;
+    setStatus('st-po', 'ok', `PDF ready — click "Process Files" to continue`);
   };
   r.readAsDataURL(f);
 }
@@ -1326,17 +1406,44 @@ function handleBOMPdf(input) {
   const f = input.files[0];
   if (!f) return;
   if (f.size > 20 * 1024 * 1024) {
-    setStatus('st-bom', 'err', '✗ File quá lớn (> 20MB).'); return;
+    setStatus('st-bom', 'err', '✗ File too large (> 20MB).'); return;
   }
   const r = new FileReader();
   r.onload = e => {
     bomPdfData = { name: f.name, b64: e.target.result.split(',')[1], size: f.size };
-    document.getElementById('bom-pdf-name').textContent = `✓ ${f.name} (${(f.size/1024).toFixed(0)} KB)`;
-    document.getElementById('bom-pdf-name').className = 'pdf-pick-name loaded';
-    setStatus('st-bom', 'ok', `PDF sẵn sàng — nhấn "AI Parse PDF" để phân tích`);
+    const zone = input.closest('.drop-zone');
+    zone.classList.add('has-file');
+    document.getElementById('bom-pdf-name').textContent = `${f.name} (${(f.size/1024).toFixed(0)} KB)`;
+    setStatus('st-bom', 'ok', `PDF ready — click "Process Files" to continue`);
   };
   r.readAsDataURL(f);
 }
+
+// ── Drag & drop support for drop-zones ────────────────────────────────────
+function setupDropZone(zoneId, inputId, handler) {
+  const zone = document.getElementById(zoneId);
+  if (!zone) return;
+  ['dragover','dragleave','drop'].forEach(evt => {
+    zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); });
+  });
+  zone.addEventListener('dragover', () => zone.style.borderColor = 'var(--tx)');
+  zone.addEventListener('dragleave', () => zone.style.borderColor = '');
+  zone.addEventListener('drop', e => {
+    zone.style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const input = document.getElementById(inputId);
+    // Assign dropped file to the input element, then trigger handler
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    handler(input);
+  });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  setupDropZone('po-drop-zone', 'po-file-input', handlePOPdf);
+  setupDropZone('bom-drop-zone', 'bom-file-input', handleBOMPdf);
+});
 
 
   const MAT_DICT = [
@@ -1462,13 +1569,13 @@ function handleBOMPdf(input) {
   }
 
 async function runFromPDF() {
-  if (!poPdfData) { setStatus('st-po',  'err', '✗ Chưa chọn PDF đơn sản xuất'); return; }
-  if (!bomPdfData){ setStatus('st-bom', 'err', '✗ Chưa chọn PDF BOM');           return; }
+  if (!poPdfData) { setStatus('st-po',  'err', '✗ Production Order PDF not selected'); return; }
+  if (!bomPdfData){ setStatus('st-bom', 'err', '✗ BOM PDF not selected');           return; }
 
   const btn = document.getElementById('ai-parse-btn');
   const sta = document.getElementById('ai-status');
   btn.disabled = true;
-  btn.textContent = '⏳ Đang phân tích…';
+  btn.textContent = '⏳ Processing…';
   sta.textContent = '';
   document.getElementById('global-err').textContent = '';
   // Đọc lựa chọn nguồn engName, set global cho runFromData dùng
@@ -1477,37 +1584,36 @@ async function runFromPDF() {
   if (ENGNAME_SOURCE === 'erp') await loadErpDict();
 
   const provider = document.getElementById('ai-provider').value;
-  const providerLabel = { auto: 'Auto', gemini: 'Gemini', mistral: 'Mistral' }[provider];
-  setStatus('st-po',  'warn', `⏳ ${providerLabel} đang đọc đơn sản xuất…`);
-  setStatus('st-bom', 'warn', `⏳ ${providerLabel} đang đọc BOM…`);
+  setStatus('st-po',  'warn', '⏳ Reading production order…');
+  setStatus('st-bom', 'warn', '⏳ Reading BOM…');
   document.getElementById('ai-used').textContent = '';
 
   try {
-    sta.textContent = `Gửi 2 PDF lên ${providerLabel} API…`;
+    sta.textContent = 'Processing documents…';
     const result = await parseWithClaude(poPdfData.b64, bomPdfData.b64, provider);
     const { po, bom } = result;
-    // Hiện badge provider thực sự đã dùng
+    // Badge: hiện "Engine A/B" — không nêu tên provider thật
     const used = result._provider || provider;
     const badge = document.getElementById('ai-used');
-    badge.textContent = used === 'gemini' ? '🔵 Gemini' : '🟠 Mistral';
+    badge.textContent = used === 'gemini' ? 'Engine A' : 'Engine B';
     badge.className = 'ai-used-badge ' + used;
 
     // Guard: normalize arrays phòng AI trả thiếu field
-    if (!po || typeof po !== 'object')  throw new Error('AI không parse được đơn sản xuất (PO). Thử lại hoặc đổi provider.');
-    if (!bom || typeof bom !== 'object') throw new Error('AI không parse được BOM. Thử lại hoặc đổi provider.');
+    if (!po || typeof po !== 'object')  throw new Error('Could not process the Production Order. Try again or switch engine.');
+    if (!bom || typeof bom !== 'object') throw new Error('Could not process the BOM. Try again or switch engine.');
     po.colors  = Array.isArray(po.colors)  ? po.colors  : [];
     bom.mats   = Array.isArray(bom.mats)   ? bom.mats   : [];
-    if (!po.colors.length)  throw new Error('AI không tìm thấy danh sách màu trong PO. Kiểm tra file PDF.');
-    if (!bom.mats.length)   throw new Error('AI không tìm thấy nguyên liệu trong BOM. Kiểm tra file PDF.');
+    if (!po.colors.length)  throw new Error('No color list found in the Production Order. Check the PDF file.');
+    if (!bom.mats.length)   throw new Error('No materials found in the BOM. Check the PDF file.');
 
     const missingQty = po.colors.filter(c => c.qtyMissing || !c.qty);
     setStatus('st-po',
       missingQty.length ? 'warn' : 'ok',
-      `✓ ${po.orderNo} — ${po.colors.length} màu · ${po.totalQ || po.colors.reduce((s,c)=>s+c.qty,0)} đôi`
-      + (missingQty.length ? ` · ⚠ Qty thiếu cho màu ${missingQty.map(c=>c.id).join(', ')}` : ''));
+      `✓ ${po.orderNo} — ${po.colors.length} colors · ${po.totalQ || po.colors.reduce((s,c)=>s+c.qty,0)} pairs`
+      + (missingQty.length ? ` · ⚠ Qty missing for color ${missingQty.map(c=>c.id).join(', ')}` : ''));
 
     setStatus('st-bom', 'ok',
-      `✓ ${bom.model || bom.orderNo} — ${bom.mats.length} nguyên liệu`);
+      `✓ ${bom.model || bom.orderNo} — ${bom.mats.length} materials`);
 
     sta.textContent = '';
     runFromData(po, bom);
@@ -1518,7 +1624,7 @@ async function runFromPDF() {
     console.error('runFromPDF:', e);
   } finally {
     btn.disabled = false;
-    btn.textContent = '🤖 AI Parse PDF';
+    btn.textContent = '⚙️ Process Files';
   }
 }
 
@@ -1561,9 +1667,9 @@ async function parseWithClaude(poPdfB64, bomPdfB64, provider = 'auto') {
   const isMistral = provider === 'mistral' || provider === 'auto';
   if (isMistral) {
     const sta = document.getElementById('ai-status');
-    sta.textContent = 'Đang render PDF thành ảnh (trang PO)…';
+    sta.textContent = 'Rendering PDF pages (Production Order)…';
     poPages = await pdfToPageImages(poPdfB64);
-    sta.textContent = 'Đang render PDF thành ảnh (trang BOM)…';
+    sta.textContent = 'Rendering PDF pages (BOM)…';
     bomPages = await pdfToPageImages(bomPdfB64);
     sta.textContent = '';
     console.log(`PDF pages — PO: ${poPages?.length ?? 'failed'}, BOM: ${bomPages?.length ?? 'failed'}`);
@@ -1578,7 +1684,7 @@ async function parseWithClaude(poPdfB64, bomPdfB64, provider = 'auto') {
   const data = await resp.json();
 
   if (!resp.ok) {
-    throw new Error(data.error || `Server lỗi ${resp.status}`);
+    throw new Error(data.error || `Server error ${resp.status}`);
   }
 
   return data;   // { po: {...}, bom: {...} }
@@ -1686,12 +1792,12 @@ function runFromData(poData, bomData) {
 
   if (!po.colors.length) {
     document.getElementById('global-err').textContent =
-      'Không tìm thấy màu sắc trong đơn sản xuất. Kiểm tra lại file PDF.';
+      'No colors found in the production order. Check the PDF file.';
     return;
   }
   if (!bom.mats.length) {
     document.getElementById('global-err').textContent =
-      'Không tìm thấy nguyên liệu trong BOM. Kiểm tra lại file PDF.';
+      'No materials found in the BOM. Check the PDF file.';
     return;
   }
 
