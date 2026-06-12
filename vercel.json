@@ -1,10 +1,5 @@
 {
   "functions": {
     "api/parse.js": { "maxDuration": 60 }
-  },
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/mat-dict.json", "dest": "/mat-dict.json" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ]
+  }
 }
