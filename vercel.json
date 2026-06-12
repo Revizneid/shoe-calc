@@ -2,7 +2,9 @@
   "functions": {
     "api/parse.js": { "maxDuration": 60 }
   },
-  "rewrites": [
-    { "source": "/((?!api/|mat-dict\\.json).*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/mat-dict.json", "dest": "/mat-dict.json" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
