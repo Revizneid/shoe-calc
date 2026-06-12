@@ -1407,10 +1407,25 @@ function handleBOMPdf(input) {
     }
   }
 
+  // ── OCR normalization: sửa các ký tự Hán dễ nhận sai bởi AI/OCR ────────────
+  // key = ký tự sai thường gặp, value = ký tự đúng
+  const OCR_FIX_MAP = {
+    '邮': '卵',  // 邮石纹 → 卵石纹 (pebble grain)
+    '雾': '雾',  // (giữ nguyên, phòng hờ)
+    '露': '雾',  // 半露面 → 半雾面 (đã xử lý ở chỗ khác nhưng thêm cho chắc)
+  };
+  function fixOcrChars(str) {
+    let out = str;
+    for (const [wrong, right] of Object.entries(OCR_FIX_MAP)) {
+      out = out.split(wrong).join(right);
+    }
+    return out;
+  }
+
   // ── Helper: lookup dict → trả engName nếu có ─────────────────────────────
   function lookupMatDict(zhName) {
     if (!zhName) return '';
-    const lower = zhName.toLowerCase();
+    const lower = fixOcrChars(zhName).toLowerCase();
 
     // 1. Try ERP dict first (from Vercel /mat-dict.json)
     if (ERP_DICT && ERP_DICT.length > 0) {
@@ -1598,7 +1613,20 @@ function runFromData(poData, bomData) {
         const matName  = matSplit.zh || matSplit.en || m.matName || '';
         const engName  = m.engName || matSplit.en || lookupMatDict(matName) || '';
         const engColor = m.engColor || colSplit.en;
-        const color    = colSplit.zh || colSplit.en || m.color   || '';
+        let color      = colSplit.zh || colSplit.en || m.color   || '';
+        // Loại bỏ spec/code lẫn trong color (vd: "139.5CM A 香草色" → "香草色",
+        // "001 黑色" → "黑色"). Spec thường là số+đơn vị (CM/MM/SF) hoặc mã ngắn
+        // ở ĐẦU chuỗi, màu thực luôn có ký tự Hán/chữ ở cuối.
+        // Strip 1: leading numeric spec (139.5CM A 香草色 → 香草色)
+        color = color.replace(/^[\d\.\-]+\s*(?:CM|MM|SF|YDS|M)?\s*[A-Z]{0,3}\s+/i, '').trim();
+        // Strip 2: leading ALL-CAPS colorway + number code (BLACK 001 黑色 → 黑色)
+        // Chỉ strip nếu phần còn lại VẪN có Hán tự (đảm bảo không xóa hết)
+        const m2 = color.match(/^([A-Z][A-Z\s]*?)\s+\d+\s+([\u4e00-\u9fff].*)$/);
+        if (m2) color = m2[2].trim();
+        // Nếu sau khi strip vẫn còn pattern spec đơn thuần (toàn số/đơn vị/A-Z ngắn) → bỏ
+        if (/^[\d\.\-\s]*(?:CM|MM|SF|YDS|M)?\s*[A-Z]{0,3}$/i.test(color) && !/[\u4e00-\u9fff]/.test(color)) {
+          color = '';
+        }
 
         // Xác định perPair đúng theo loại vật liệu
         // Nếu AI đã chọn đúng (m.perPair) thì dùng, không thì fallback chain
@@ -1652,9 +1680,14 @@ function runFromData(poData, bomData) {
   // Dùng để hiện badge colorway, không phải màu vật liệu
   const colorwayMap = {};
   po.colors.forEach(c => {
-    // Lấy phần tên màu (trước ký tự '/' hoặc số đầu tiên)
-    const shortName = c.code.split('/')[0].trim();
-    colorwayMap[c.id] = shortName;
+    // Lấy phần tên màu thuần (chữ cái + khoảng trắng), bỏ mã số/code đi kèm
+    // VD: "BLACK 001/40S6P1F" → "BLACK", "139.5CM A" → loại (không phải màu)
+    let raw = c.code.split('/')[0].trim();
+    // Bỏ số/code ở cuối: "BLACK 001" → "BLACK", "LT CREAM 200" → "LT CREAM"
+    raw = raw.replace(/\s+\d+[A-Za-z]*\s*$/, '').trim();
+    // Nếu sau khi bỏ số mà rỗng hoặc toàn số/đơn vị đo (CM/MM/SF) → không phải màu, bỏ qua
+    const isSpecLike = /^\d|CM$|MM$|SF$/i.test(raw) || !raw;
+    colorwayMap[c.id] = isSpecLike ? '' : raw;
   });
   bom.mats = bom.mats.map(m => ({
     ...m,
