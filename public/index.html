@@ -254,6 +254,11 @@ tfoot td{background:var(--surf2);font-weight:700;padding:10px 11px;
       <option value="gemini">🔵 Gemini</option>
       <option value="mistral">🟠 Mistral</option>
     </select>
+    <select id="engname-source" class="provider-select" title="Nguồn lấy tên tiếng Anh vật liệu">
+      <option value="ai">🤖 Tên Anh từ AI (PDF/ảnh)</option>
+      <option value="erp" selected>📖 Tra ERP dict (mat-dict.json)</option>
+      <option value="builtin">📋 Tra dict nội bộ (built-in)</option>
+    </select>
     <span id="ai-used" class="ai-used-badge"></span>
     <button class="btn btn-ghost btn-sm" onclick="run()" title="Dùng khi đã paste .md vào ô trên">
       Parse .md →
@@ -1389,6 +1394,9 @@ function handleBOMPdf(input) {
     ['鞋口包边',         'COLLAR BINDING'],
   ];
 
+  // Nguồn lấy tên tiếng Anh vật liệu: 'ai' | 'erp' | 'builtin' (set bởi UI selector)
+  let ENGNAME_SOURCE = 'erp';
+
   // ── ERP dict (loaded async from /mat-dict.json) ──────────────────────────
   let ERP_DICT = null;  // { zh_key: { en, unit, cls } } sorted by key length desc
 
@@ -1423,18 +1431,18 @@ function handleBOMPdf(input) {
   }
 
   // ── Helper: lookup dict → trả engName nếu có ─────────────────────────────
-  function lookupMatDict(zhName) {
+  // builtinOnly=true → chỉ tra MAT_DICT nội bộ, bỏ qua ERP dict
+  function lookupMatDict(zhName, builtinOnly = false) {
     if (!zhName) return '';
     const lower = fixOcrChars(zhName).toLowerCase();
 
-    // 1. Try ERP dict first (from Vercel /mat-dict.json)
-    if (ERP_DICT && ERP_DICT.length > 0) {
+    if (!builtinOnly && ERP_DICT && ERP_DICT.length > 0) {
       for (const [zh, v] of ERP_DICT) {
         if (lower.includes(zh.toLowerCase())) return v.en;
       }
     }
 
-    // 2. Fallback: built-in MAT_DICT
+    // Built-in MAT_DICT (dùng khi builtinOnly=true, hoặc fallback khi ERP không có)
     const sorted = [...MAT_DICT].sort((a, b) => b[0].length - a[0].length);
     for (const [zh, en] of sorted) {
       if (lower.includes(zh.toLowerCase())) return en;
@@ -1463,8 +1471,10 @@ async function runFromPDF() {
   btn.textContent = '⏳ Đang phân tích…';
   sta.textContent = '';
   document.getElementById('global-err').textContent = '';
-  // Pre-load ERP dict (no-op if already loaded)
-  await loadErpDict();
+  // Đọc lựa chọn nguồn engName, set global cho runFromData dùng
+  ENGNAME_SOURCE = document.getElementById('engname-source').value;
+  // Chỉ load ERP dict nếu cần (source = 'erp')
+  if (ENGNAME_SOURCE === 'erp') await loadErpDict();
 
   const provider = document.getElementById('ai-provider').value;
   const providerLabel = { auto: 'Auto', gemini: 'Gemini', mistral: 'Mistral' }[provider];
@@ -1609,9 +1619,21 @@ function runFromData(poData, bomData) {
         // Tách tên tiếng Trung / Anh từ matName và color
         const matSplit = splitZhEn(m.matName || '');
         const colSplit = splitZhEn(m.color   || '');
-        // engName: ưu tiên từ AI → tách từ tên gốc → tra dict → để trống
         const matName  = matSplit.zh || matSplit.en || m.matName || '';
-        const engName  = m.engName || matSplit.en || lookupMatDict(matName) || '';
+        // engName: theo lựa chọn nguồn của người dùng
+        //   'ai'      → chỉ dùng tên AI đọc được từ PDF/ảnh (m.engName / tách từ matName)
+        //   'erp'     → tra ERP dict (mat-dict.json), fallback AI nếu không có
+        //   'builtin' → tra dict nội bộ MAT_DICT, fallback AI nếu không có
+        const aiEngName = m.engName || matSplit.en || '';
+        let engName = '';
+        if (ENGNAME_SOURCE === 'ai') {
+          engName = aiEngName;
+        } else if (ENGNAME_SOURCE === 'builtin') {
+          engName = lookupMatDict(matName, true) || aiEngName;
+        } else {
+          // 'erp' (default): ERP dict trước, fallback AI
+          engName = lookupMatDict(matName, false) || aiEngName;
+        }
         const engColor = m.engColor || colSplit.en;
         let color      = colSplit.zh || colSplit.en || m.color   || '';
         // Loại bỏ spec/code lẫn trong color (vd: "139.5CM A 香草色" → "香草色",
