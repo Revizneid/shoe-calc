@@ -1504,8 +1504,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Nguồn lấy tên tiếng Anh vật liệu: 'ai' | 'erp' | 'builtin' (set bởi UI selector)
   let ENGNAME_SOURCE = 'erp';
 
-  // ── ERP dict (loaded async from /mat-dict.json) ──────────────────────────
-  let ERP_DICT = null;  // { zh_key: { en, unit, cls } } sorted by key length desc
+  // ── ERP dicts (loaded async from /mat-dict.json + /color-dict.json) ──────
+  let ERP_DICT = null;    // { zh_key: { en, unit, cls } } sorted by key length desc — material names
+  let COLOR_DICT = null;  // [zh_color, en_color][] sorted by key length desc
 
   async function loadErpDict() {
     if (ERP_DICT) return;
@@ -1515,11 +1516,35 @@ document.addEventListener('DOMContentLoaded', () => {
       const raw = await resp.json();
       // Sort keys by length desc for longest-match-first lookup
       ERP_DICT = Object.entries(raw).sort((a, b) => b[0].length - a[0].length);
-      console.log(`ERP dict loaded: ${ERP_DICT.length} entries`);
+      console.log(`ERP material dict loaded: ${ERP_DICT.length} entries`);
     } catch(e) {
       console.warn('ERP dict load failed:', e.message, '— falling back to built-in dict');
       ERP_DICT = [];
     }
+  }
+
+  async function loadColorDict() {
+    if (COLOR_DICT) return;
+    try {
+      const resp = await fetch('/color-dict.json');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const raw = await resp.json();
+      COLOR_DICT = Object.entries(raw).sort((a, b) => b[0].length - a[0].length);
+      console.log(`ERP color dict loaded: ${COLOR_DICT.length} entries`);
+    } catch(e) {
+      console.warn('Color dict load failed:', e.message);
+      COLOR_DICT = [];
+    }
+  }
+
+  // ── Lookup tên màu tiếng Anh từ tên Trung (qua ERP color dict) ────────────
+  function lookupColorDict(zhColor) {
+    if (!zhColor || !COLOR_DICT || COLOR_DICT.length === 0) return '';
+    const lower = fixOcrChars(zhColor).toLowerCase();
+    for (const [zh, en] of COLOR_DICT) {
+      if (lower.includes(zh.toLowerCase())) return en;
+    }
+    return '';
   }
 
   // ── OCR normalization: sửa các ký tự Hán dễ nhận sai bởi AI/OCR ────────────
@@ -1581,7 +1606,7 @@ async function runFromPDF() {
   // Đọc lựa chọn nguồn engName, set global cho runFromData dùng
   ENGNAME_SOURCE = document.getElementById('engname-source').value;
   // Chỉ load ERP dict nếu cần (source = 'erp')
-  if (ENGNAME_SOURCE === 'erp') await loadErpDict();
+  if (ENGNAME_SOURCE === 'erp') { await loadErpDict(); await loadColorDict(); }
 
   const provider = document.getElementById('ai-provider').value;
   setStatus('st-po',  'warn', '⏳ Reading production order…');
@@ -1740,7 +1765,7 @@ function runFromData(poData, bomData) {
           // 'erp' (default): ERP dict trước, fallback AI
           engName = lookupMatDict(matName, false) || aiEngName;
         }
-        const engColor = m.engColor || colSplit.en;
+        const aiEngColor = m.engColor || colSplit.en;
         let color      = colSplit.zh || colSplit.en || m.color   || '';
         // Loại bỏ spec/code lẫn trong color (vd: "139.5CM A 香草色" → "香草色",
         // "001 黑色" → "黑色"). Spec thường là số+đơn vị (CM/MM/SF) hoặc mã ngắn
@@ -1754,6 +1779,15 @@ function runFromData(poData, bomData) {
         // Nếu sau khi strip vẫn còn pattern spec đơn thuần (toàn số/đơn vị/A-Z ngắn) → bỏ
         if (/^[\d\.\-\s]*(?:CM|MM|SF|YDS|M)?\s*[A-Z]{0,3}$/i.test(color) && !/[\u4e00-\u9fff]/.test(color)) {
           color = '';
+        }
+
+        // engColor: theo ENGNAME_SOURCE, ưu tiên tra color dict ERP trước
+        let engColor = '';
+        if (ENGNAME_SOURCE === 'ai') {
+          engColor = aiEngColor;
+        } else {
+          // 'erp' và 'builtin' đều tra color dict (chỉ có 1 nguồn color dict từ ERP)
+          engColor = lookupColorDict(color) || aiEngColor;
         }
 
         // Xác định perPair đúng theo loại vật liệu
