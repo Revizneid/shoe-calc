@@ -854,6 +854,14 @@ function applicableQty(cfg) {
 const FMT  = (n, d=3) => parseFloat(n.toFixed(d)).toLocaleString('en-US');
 const FMTI = (n) => Math.round(n).toLocaleString('en-US');
 
+// Trim unnecessary trailing zeros from parsed numbers (e.g. 1.5000 → 1.5)
+// Does NOT round aggressively — AI OCR precision is preserved for user to verify
+function smartRound(n) {
+  if (!n || n === 0) return 0;
+  // Keep up to 4 decimal places, trim trailing zeros
+  return parseFloat(n.toFixed(4));
+}
+
 const SWATCH = {
   BLACK:'#222', BLK:'#222', WHITE:'#f0f0ef', WHT:'#f0f0ef',
   BLUSH:'#d4a0a0', PINK:'#e8a0b8', 'LT BLUSH':'#d4a0a0',
@@ -961,8 +969,8 @@ function render() {
         ${m.engName ? `<div class="meng">${m.engName}</div>` : ''}
       </td>
       <td>
-        ${m.colorway
-          ? `<div class="mcolor-eng">${m.colorway}</div>` : ''}
+        ${(m.engColor || m.colorway)
+          ? `<div class="mcolor-eng">${m.engColor || m.colorway}</div>` : ''}
         ${m.color
           ? `<div class="mcolor">${m.color}</div>` : ''}
       </td>
@@ -1955,6 +1963,7 @@ function runFromData(poData, bomData) {
 
         // Final fallback: dùng bất kỳ giá trị nào có
         if (!perPair) perPair = sfVal || yVal || sfTgt || parseFloat(m.perPair) || 0;
+        perPair = smartRound(perPair);
 
         return {
           cfg:     String(m.cfg),
