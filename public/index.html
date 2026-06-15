@@ -1630,11 +1630,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ── Lookup tên màu tiếng Anh từ tên Trung (qua ERP color dict) ────────────
+  // ── Built-in color fallback (common colors guaranteed available) ──────────
+  const COLOR_BUILTIN = [
+    ['自然色','NATURAL'],['黑色','BLACK'],['白色','WHITE'],['海军蓝色','NAVY'],
+    ['浅咖色','LUGGAGE'],['浅红色','LIGHT BLUSH'],['浅奶黄色','LIGHT CREAM'],
+    ['香草色','VANILLA'],['银色','SILVER'],['浅金色','PALE GOLD'],['橄榄色','OLIVE'],
+    ['卡其色','KHAKI'],['驼色','CAMEL'],['棕色','BROWN'],['灰色','GREY'],
+    ['肉色','NUDE'],['红色','RED'],['粉色','PINK'],['蓝色','BLUE'],['绿色','GREEN'],
+    ['本白色','OPTIC WHITE'],['灰褐色','TAUPE'],['沙色','SAND'],['玫瑰色','ROSE'],
+    ['胡桃色','WALNUT'],['太妃糖色','TOFFEE'],['香槟色','CHAMPAGNE'],
+    ['浅自然色','LIGHT NATURAL'],['深自然色','DARK NATURAL'],['杏色','NATURAL'],
+    ['橘色','ORANGE'],['珊瑚色','CORAL'],['浅蓝色','LIGHT BLUE'],
+    ['深蓝色','DARK BLUE'],['深棕色','DARK BROWN'],['米色','BEIGE'],
+  ];
+
+  // ── Lookup tên màu tiếng Anh từ tên Trung ────────────────────────────────
+  // Tier 1: ERP color dict (704 entries, loaded async)
+  // Tier 2: Built-in fallback (always available)
   function lookupColorDict(zhColor) {
-    if (!zhColor || !COLOR_DICT || COLOR_DICT.length === 0) return '';
+    if (!zhColor) return '';
     const lower = fixOcrChars(zhColor).toLowerCase();
-    for (const [zh, en] of COLOR_DICT) {
+
+    // Tier 1: ERP dict (sorted by key length desc = longest match first)
+    if (COLOR_DICT && COLOR_DICT.length > 0) {
+      for (const [zh, en] of COLOR_DICT) {
+        if (lower.includes(zh.toLowerCase())) return en;
+      }
+    }
+
+    // Tier 2: built-in fallback (always runs)
+    for (const [zh, en] of COLOR_BUILTIN) {
       if (lower.includes(zh.toLowerCase())) return en;
     }
     return '';
@@ -1883,24 +1908,53 @@ function runFromData(poData, bomData) {
           engColor = lookupColorDict(color) || aiEngColor;
         }
 
-        // Xác định perPair đúng theo loại vật liệu
-        // Nếu AI đã chọn đúng (m.perPair) thì dùng, không thì fallback chain
+        // ── Xác định perPair đúng theo loại vật liệu (ALWAYS re-derive) ──────────
+        // KHÔNG dùng m.perPair của AI vì AI thường chọn sai cột SF↔Y
+        // Luôn kiểm tra isLeather từ tên vật liệu để chọn đúng cột
         const sfVal  = parseFloat(m.perPairSF) || 0;
         const yVal   = parseFloat(m.perPairY)  || 0;
         const sfTgt  = parseFloat(m.sfTarget)  || 0;
-        let perPair  = parseFloat(m.perPair)   || 0;
-        let unit     = m.unit || 'SF';
+        let perPair  = 0;
+        let unit     = 'SF';
 
-        // Nếu perPair chưa được AI chọn, tự suy từ perPairSF / perPairY
-        if (!perPair) {
-          const nameLC = (matName + engName).toLowerCase();
-          const isLeather = /牛皮|羊皮|猪皮|反绒|绒皮|马毛|小牛|羊羔|nappa|suede|calf|leather|kid|nubuck|buffalo/.test(nameLC);
-          if (isLeather && sfVal) { perPair = sfVal; unit = 'SF'; }
-          else if (!isLeather && yVal) { perPair = yVal; unit = m.unit || 'm2'; }
-          else if (sfVal) { perPair = sfVal; unit = 'SF'; }
-          else if (yVal)  { perPair = yVal;  unit = m.unit || 'm2'; }
+
+        // Classify material type from ZH + EN name
+        // PRIORITY: if ZH name ends with "PU" or "PVC" → non-leather, regardless of EN keywords
+        const nameLC = (matName + ' ' + engName).toLowerCase().replace(/\n/g,'');
+        // Non-leather: ZH name explicitly ends/contains PU, PVC, fabric terms
+        const isDefinitelyNonLeather =
+          /pu[（(（）)）]|pu$/i.test(matName) ||
+          /\bpu\b/.test(matName.toLowerCase()) ||
+          /pvc/.test(matName.toLowerCase()) ||
+          /无纺|织布|绒面革|纤维革/.test(matName) ||
+          /faux suede|micro suede|water.?based|synthetic|non.?woven/i.test(engName);
+        const isRope = /麻绳|麻|rope|cord|jute|straw|草|藤/.test(nameLC);
+        const isLeather = !isDefinitelyNonLeather && !isRope && (
+          /牛皮|羊皮|猪皮|反绒皮|绒皮|马毛|小牛|羊羔|羊京皮|山羊皮|绵羊皮|牛反绒|牛反毛|牛京皮/.test(matName) ||
+          (/\b(calf|nubuck|buffalo|haircalf|sheepskin|cowhide|pigskin|goatskin|lambskin)\b/.test(nameLC)) ||
+          (/\bleather\b/.test(nameLC) && !/synthetic|faux|pu\b|pvc/.test(nameLC)) ||
+          (/\bsuede\b/.test(nameLC) && !/faux|micro|water|绒面革/.test(nameLC)) ||
+          (/\bkid\b/.test(nameLC) && !/fabric|lining/.test(nameLC)) ||
+          (/\bnappa\b/.test(nameLC) && !isDefinitelyNonLeather)
+        );
+        if (isRope) {
+          // Rope/jute: unit from spec (M or yd), use sfTgt as length
+          perPair = sfTgt || yVal || sfVal;
+          unit = m.unit || 'M';
+        } else if (isLeather) {
+          // Da thật: lấy cột SF/对
+          if (sfVal)      { perPair = sfVal; unit = 'SF'; }
           else if (sfTgt) { perPair = sfTgt; unit = 'SF'; }
+          else if (yVal)  { perPair = yVal;  unit = 'SF'; } // last resort
+        } else {
+          // PU/PVC/Fabric/Lining: lấy cột Y/对 (m2/yd)
+          if (yVal)       { perPair = yVal;  unit = m.unit || 'm2'; }
+          else if (sfTgt) { perPair = sfTgt; unit = 'SF'; }
+          else if (sfVal) { perPair = sfVal; unit = 'SF'; } // last resort
         }
+
+        // Final fallback: dùng bất kỳ giá trị nào có
+        if (!perPair) perPair = sfVal || yVal || sfTgt || parseFloat(m.perPair) || 0;
 
         return {
           cfg:     String(m.cfg),
