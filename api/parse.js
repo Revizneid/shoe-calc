@@ -149,11 +149,13 @@ Trả về DUY NHẤT JSON sau. Không giải thích, không markdown, không ba
   ]
 }
 
-QUY TẮC cột (bảng có 3 cột số liệu):
-- 目标用量SF (hoặc 目标用量) → sfTarget
-- SF/对 (hoặc 单一用量 SF/对) → perPairSF  
-- Y/对 (hoặc 单一用量 Y/对) → perPairY
-Cột nào trống/gạch ngang → null.
+QUY TẮC cột (bảng có 3-4 cột số liệu):
+- 目标用量SF (hoặc 目标用量) → sfTarget: số thập phân 1-2 chữ số (vd: 0.48, 1.3)
+- SF/对 (hoặc 单一用量 SF/对) → perPairSF: số thập phân 1-2 chữ số (vd: 0.93, 2.15)
+- Y/对 (hoặc 单一用量 Y/对) → perPairY: số thập phân nhỏ 3-4 chữ số (vd: 0.026, 0.1143)
+- 单刀用量 (per-knife, breakdown) → KHÔNG PHẢI perPair, đây là phân bổ chi tiết — BỎ QUA
+Cột nào trống/gạch ngang/dấu '-' → null.
+ĐỌC SỐ CẨN THẬN: 0.026 ≠ 0.0264, 0.06 ≠ 0.064. Đọc đúng từng chữ số.
 
 QUY TẮC chọn perPair:
 - DA THẬT (牛皮,羊皮,猪皮,反绒,绒皮,马毛,羊京皮,nappa,suede,calf,leather): perPair=perPairSF, unit=SF
