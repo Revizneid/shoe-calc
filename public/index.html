@@ -681,28 +681,80 @@ function extractEnglishName(chName, cellTexts) {
 // we create one row per cfg and cycle/broadcast color parts as best we can.
 // Chinese color keyword map: English PO color fragment → Chinese BOM color name
 const COLOR_ZH_MAP = [
-  { en: ['BLACK','BLK','黑'],       zh: '黑色' },
+  { en: ['BLACK','BLK'],             zh: '黑色' },
+  { en: ['WHITE','WHT'],             zh: '白色' },
   { en: ['VANILLA','VANILL'],        zh: '香草色' },
   { en: ['NAVY'],                    zh: '海军蓝色' },
   { en: ['CREAM','LT CREAM','LIGHT CREAM'], zh: '浅奶黄色' },
-  { en: ['BLUSH','LT BLUSH','LIGHT BLUSH'], zh: '浅红色' },
+  { en: ['LT BLUSH','LIGHT BLUSH','BLUSH'], zh: '浅红色' },
   { en: ['SILVER','SILVE'],          zh: '银色' },
-  { en: ['GOLD','PALE GOLD'],        zh: '浅金色' },
-  { en: ['LUGGAGE'],                 zh: '浅咖色' },
-  { en: ['NATURAL','NAT'],           zh: '自然色' },
+  { en: ['PALE GOLD','GOLD'],        zh: '浅金色' },
+  { en: ['LUGGAGE','LUGG'],          zh: '浅咖色' },
+  { en: ['NATURAL','NATUR'],         zh: '自然色' },
+  { en: ['OLIVE'],                   zh: '橄榄色' },
+  { en: ['KHAKI','KHAK'],            zh: '卡其色' },
+  { en: ['CAMEL'],                   zh: '驼色' },
+  { en: ['BROWN','BROW'],            zh: '棕色' },
+  { en: ['TAUPE'],                   zh: '灰褐色' },
+  { en: ['GREY','GRAY'],             zh: '灰色' },
+  { en: ['NUDE'],                    zh: '肉色' },
+  { en: ['RED'],                     zh: '红色' },
+  { en: ['PINK'],                    zh: '粉色' },
+  { en: ['BLUE'],                    zh: '蓝色' },
+  { en: ['GREEN'],                   zh: '绿色' },
+  { en: ['CORAL'],                   zh: '珊瑚色' },
+  { en: ['SAND'],                    zh: '沙色' },
+  { en: ['COGNAC'],                  zh: '干邑色' },
+  { en: ['WALNUT'],                  zh: '胡桃色' },
+  { en: ['TOFFEE'],                  zh: '太妃糖色' },
+  { en: ['CHAMPAGNE'],               zh: '香槟色' },
+  { en: ['BONE'],                    zh: '象牙色' },
+  { en: ['STONE'],                   zh: '石色' },
+  { en: ['CHALK'],                   zh: '粉白色' },
+  { en: ['OPTIC WHITE','OPTIC'],     zh: '本白色' },
+  { en: ['ROSE'],                    zh: '玫瑰色' },
+  { en: ['MIDNIGHT'],                zh: '午夜蓝色' },
 ];
 
 // Given a PO color code (e.g. "BLACK/001/..."), find which BOM colorPart matches best.
 // colorParts = list of Chinese color names from BOM (e.g. ["自然色","黑色"])
+// Uses 3-tier lookup:
+//   1. Static COLOR_ZH_MAP (fast, common colors)
+//   2. ERP COLOR_DICT reverse lookup (dynamic, 704 entries)
+//   3. Substring match of BOM color ZH names inside PO code
 function matchColorPart(poCode, colorParts) {
   if (!poCode || !colorParts.length) return colorParts[0] || '';
   const up = poCode.toUpperCase();
-  // Direct: check if any colorPart appears literally in PO code (after translation)
+
+  // Tier 1: static map
   for (const entry of COLOR_ZH_MAP) {
-    const matchEn = entry.en.some(e => up.includes(e.toUpperCase()));
-    if (matchEn && colorParts.includes(entry.zh)) return entry.zh;
+    if (colorParts.includes(entry.zh)) {
+      if (entry.en.some(e => up.includes(e.toUpperCase()))) return entry.zh;
+    }
   }
-  // Fallback: return first colorPart (default/most common color)
+
+  // Tier 2: reverse lookup via ERP COLOR_DICT (if loaded)
+  // For each BOM color, translate to EN via dict, then check if EN appears in PO code
+  if (COLOR_DICT && COLOR_DICT.length > 0) {
+    for (const zhPart of colorParts) {
+      // Find EN translation(s) of this ZH color
+      const zhLow = fixOcrChars(zhPart).toLowerCase();
+      for (const [zhKey, enVal] of COLOR_DICT) {
+        if (zhLow.includes(zhKey.toLowerCase())) {
+          // Check if EN appears in PO code
+          const enWords = enVal.toUpperCase().split(/\s+/);
+          if (enWords.some(w => w.length > 2 && up.includes(w))) {
+            return zhPart;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // Tier 3: count how many colorParts are "consumed" by preceding cfgs
+  // If C1 already matched 黑色, the remaining cfgs should get the next unused color
+  // (Caller handles this via usedColors tracking — see expandMaterials)
   return colorParts[0];
 }
 
@@ -726,22 +778,63 @@ function expandMaterials(mats, colors) {
       // Single color shared by all cfgs — keep as one combined row
       result.push({ ...m, cfgOrig: m.cfg });
     } else {
-      // Fewer color variants than cfgs (e.g. 2 colors for 8 cfgs)
-      // Group cfgs by their matched color → one row per color group
-      const groups = {}; // color → [ids]
+      // Fewer color variants than cfgs (e.g. 2 colors for 4 cfgs)
+      // Match each cfg PO color → find which BOM color fits
+      // Track used counts to avoid all cfgs landing on same color
+      const groups = {};
+      const usedCount = {};
+      colorParts.forEach(cp => { usedCount[cp] = 0; });
+
+      // Pass 1: assign configs that have a HARD color match (exact keyword in PO code)
+      const hardAssigned = {}; // id → color
       ids.forEach(id => {
         const poColor = colors.find(c => c.id === id);
-        const col = poColor ? matchColorPart(poColor.code, colorParts) : colorParts[0];
-        if (!groups[col]) groups[col] = [];
-        groups[col].push(id);
+        if (!poColor) return;
+        const matched = matchColorPart(poColor.code, colorParts);
+        // Only accept as "hard" if it's not just a fallback to colorParts[0]
+        // A hard match means matchColorPart found it via COLOR_ZH_MAP or COLOR_DICT tier
+        const isHard = COLOR_ZH_MAP.some(entry =>
+          entry.zh === matched &&
+          entry.en.some(e => poColor.code.toUpperCase().includes(e.toUpperCase()))
+        ) || (COLOR_DICT && COLOR_DICT.length > 0 && (() => {
+          const up = poColor.code.toUpperCase();
+          const zhLow = fixOcrChars(matched).toLowerCase();
+          for (const [zhKey, enVal] of COLOR_DICT) {
+            if (zhLow.includes(zhKey.toLowerCase())) {
+              return enVal.toUpperCase().split(/\s+/).some(w => w.length > 2 && up.includes(w));
+            }
+          }
+          return false;
+        })());
+        if (isHard) hardAssigned[id] = matched;
       });
+
+      // Determine which colors are consumed by hard assignments
+      const hardColors = new Set(Object.values(hardAssigned));
+      // Remaining colors for cfgs that had no hard match
+      const remainingColors = colorParts.filter(cp => !hardColors.has(cp));
+      let remainIdx = 0;
+
+      // Pass 2: assign all cfgs — hard-matched use their color, others get remaining in order
+      ids.forEach(id => {
+        let matched;
+        if (hardAssigned[id]) {
+          matched = hardAssigned[id];
+        } else if (remainingColors.length > 0) {
+          // Assign next remaining color (round-robin if more cfgs than remaining colors)
+          matched = remainingColors[remainIdx % remainingColors.length];
+          remainIdx++;
+        } else {
+          matched = colorParts[0]; // last resort
+        }
+
+        usedCount[matched] = (usedCount[matched] || 0) + 1;
+        if (!groups[matched]) groups[matched] = [];
+        groups[matched].push(id);
+      });
+
       Object.entries(groups).forEach(([col, groupIds]) => {
-        result.push({
-          ...m,
-          cfg: groupIds.join('+'),
-          cfgOrig: m.cfg,
-          color: col,
-        });
+        result.push({ ...m, cfg: groupIds.join('+'), cfgOrig: m.cfg, color: col });
       });
     }
   });
