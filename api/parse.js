@@ -149,13 +149,25 @@ Trả về DUY NHẤT JSON sau. Không giải thích, không markdown, không ba
   ]
 }
 
-QUY TẮC cột (bảng có 3-4 cột số liệu):
-- 目标用量SF (hoặc 目标用量) → sfTarget: số thập phân 1-2 chữ số (vd: 0.48, 1.3)
-- SF/对 (hoặc 单一用量 SF/对) → perPairSF: số thập phân 1-2 chữ số (vd: 0.93, 2.15)
-- Y/对 (hoặc 单一用量 Y/对) → perPairY: số thập phân nhỏ 3-4 chữ số (vd: 0.026, 0.1143)
-- 单刀用量 (per-knife, breakdown) → KHÔNG PHẢI perPair, đây là phân bổ chi tiết — BỎ QUA
+QUY TẮC cột (bảng có 3-4 cột số liệu — đọc HEADER ROW để xác định đúng cột):
+
+BƯỚC 1 — Xác định header của bảng:
+Tìm hàng tiêu đề chứa: 目标用量SF | SF/对 | Y/对 (hoặc 单一用量 SF | 单一用量 Y)
+
+BƯỚC 2 — Đọc đúng từng cột:
+- Cột "目标用量SF" (hoặc "目标用量") → sfTarget (số lớn hơn, 1-2 decimal: 0.48, 1.3, 2.15)
+- Cột "SF/对" (hoặc "单一用量 SF/对") → perPairSF (da thật, đơn vị SF)
+- Cột "Y/对" (hoặc "单一用量 Y/对") → perPairY (PU/PVC/fabric, đơn vị m2, số nhỏ: 0.026, 0.1143)
+- Cột "单刀用量" (phân bổ chi tiết từng bộ phận) → BỎ QUA hoàn toàn, không map vào bất kỳ field nào
+
+BƯỚC 3 — Kiểm tra logic:
+- Nếu vật liệu là DA THẬT (牛皮,羊皮,羊京皮,绒皮...): perPairSF phải có giá trị, perPairY thường null
+- Nếu vật liệu là PU/PVC/布/纤维: perPairY phải có giá trị (số nhỏ kiểu 0.026-0.15), perPairSF thường null
+- sfTarget LUÔN LỚN HƠN perPairY (sfTarget=0.48 > perPairY=0.044 ✓)
+- Nếu cột SF/对 KHÔNG TỒN TẠI trong bảng → perPairSF = null cho tất cả các hàng
+
 Cột nào trống/gạch ngang/dấu '-' → null.
-ĐỌC SỐ CẨN THẬN: 0.026 ≠ 0.0264, 0.06 ≠ 0.064. Đọc đúng từng chữ số.
+ĐỌC SỐ CẨN THẬN: 0.026 ≠ 0.0264. Đọc đúng từng chữ số.
 
 QUY TẮC chọn perPair:
 - DA THẬT (牛皮,羊皮,猪皮,反绒,绒皮,马毛,羊京皮,nappa,suede,calf,leather): perPair=perPairSF, unit=SF
