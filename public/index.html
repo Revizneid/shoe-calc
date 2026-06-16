@@ -1922,6 +1922,10 @@ function runFromData(poData, bomData) {
         const sfVal  = parseFloat(m.perPairSF) || 0;
         const yVal   = parseFloat(m.perPairY)  || 0;
         const sfTgt  = parseFloat(m.sfTarget)  || 0;
+        // Debug: log raw AI values to help diagnose column mis-reading
+        if (sfVal === 0 && yVal === 0 && sfTgt > 0) {
+          console.warn(`[perPair] ${matName}: sfTarget=${sfTgt} only, perPairSF=${m.perPairSF}, perPairY=${m.perPairY} — AI may have missed Y/对 column`);
+        }
         let perPair  = 0;
         let unit     = 'SF';
 
@@ -1956,13 +1960,26 @@ function runFromData(poData, bomData) {
           else if (yVal)  { perPair = yVal;  unit = 'SF'; } // last resort
         } else {
           // PU/PVC/Fabric/Lining: lấy cột Y/对 (m2/yd)
-          if (yVal)       { perPair = yVal;  unit = m.unit || 'm2'; }
-          else if (sfTgt) { perPair = sfTgt; unit = 'SF'; }
-          else if (sfVal) { perPair = sfVal; unit = 'SF'; } // last resort
+          const aiPerPair = parseFloat(m.perPair) || 0;
+          if (yVal) {
+            perPair = yVal; unit = m.unit || 'm2';
+          } else if (aiPerPair && sfTgt && aiPerPair < sfTgt) {
+            // AI đã chọn đúng (giá trị nhỏ hơn sfTarget = Y/对), dùng luôn
+            perPair = aiPerPair; unit = m.unit || 'm2';
+          } else if (aiPerPair && !sfTgt) {
+            // Không có sfTarget để so sánh, tin vào AI
+            perPair = aiPerPair; unit = m.unit || 'm2';
+          } else if (sfTgt) {
+            // Fallback: AI chỉ có sfTarget — dùng nhưng báo có thể sai
+            perPair = sfTgt; unit = 'SF';
+            console.warn(`[perPair fallback to sfTarget] ${matName}: yVal=0, aiPerPair=${aiPerPair}, sfTgt=${sfTgt}`);
+          } else if (sfVal) {
+            perPair = sfVal; unit = 'SF';
+          }
         }
 
-        // Final fallback: dùng bất kỳ giá trị nào có
-        if (!perPair) perPair = sfVal || yVal || sfTgt || parseFloat(m.perPair) || 0;
+        // Final fallback
+        if (!perPair) perPair = sfVal || yVal || parseFloat(m.perPair) || sfTgt || 0;
         perPair = smartRound(perPair);
 
         return {
