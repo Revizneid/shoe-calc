@@ -142,6 +142,17 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .cfg-a{background:var(--surf2);color:var(--tx2);border:1px solid var(--bd)}
 .mname{font-weight:600;font-size:13px}
 .mcolor{font-size:11px;color:var(--tx3);margin-top:1px}
+.pp-cell{min-width:90px}
+.pp-wrap{display:flex;align-items:center;justify-content:flex-end;gap:3px}
+.pp-inp{width:64px;text-align:right;border:1px solid transparent;border-radius:4px;
+  padding:2px 4px;font-size:15px;font-weight:700;font-family:inherit;
+  background:transparent;color:var(--tx);line-height:1.2;
+  -moz-appearance:textfield;transition:border-color .15s, background .15s}
+.pp-inp::-webkit-outer-spin-button,.pp-inp::-webkit-inner-spin-button{-webkit-appearance:none}
+.pp-inp:hover{border-color:var(--bd2);background:var(--surf)}
+.pp-inp:focus{outline:none;border-color:var(--tx);background:var(--surf);
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--tx) 10%, transparent)}
+.pp-inp.modified{color:var(--blue);border-color:var(--blue-bg)}
 .mcolor-eng{font-size:12px;font-weight:600;color:var(--tx2);letter-spacing:.01em}
 .meng{font-size:11px;color:var(--tx2);margin-top:2px;font-weight:500;font-style:italic}
 .mnote{font-size:11px;color:var(--tx2);margin-top:3px;font-style:italic}
@@ -761,7 +772,7 @@ function matchColorPart(poCode, colorParts) {
 function expandMaterials(mats, colors) {
   const result = [];
   mats.forEach(m => {
-    const ids = m.cfg.split('+').map(s => s.trim());
+    const ids = parseCfg(m.cfg);
     if (ids.length === 1) {
       result.push({ ...m });
       return;
@@ -844,9 +855,22 @@ function expandMaterials(mats, colors) {
 // ═══════════════════════ STATE ═══════════════════════
 let S = null; // { po, bom, colors[] }
 
+// Parse cfg string → array of color IDs
+// Handles: '1+2+3', '1--9' (range), '1-9' (range), single '1'
+function parseCfg(cfg) {
+  if (!cfg) return [];
+  // Range: "1--9" or "1-9" → expand to ["1","2",...,"9"]
+  const rangeM = cfg.match(/^(\d+)--(\d+)$/) || (!cfg.includes('+') && cfg.match(/^(\d+)-(\d+)$/));
+  if (rangeM) {
+    const from = parseInt(rangeM[1]), to = parseInt(rangeM[2]);
+    return Array.from({length: to - from + 1}, (_, i) => String(from + i));
+  }
+  return cfg.split('+').map(s => s.trim()).filter(Boolean);
+}
+
 function applicableQty(cfg) {
   if (!S) return 0;
-  const ids = cfg.split('+').map(s => s.trim());
+  const ids = parseCfg(cfg);
   return S.colors.reduce((sum, c) => ids.includes(c.id) ? sum + (c.qty||0) : sum, 0);
 }
 
@@ -975,15 +999,22 @@ function render() {
           ? `<div class="mcolor">${m.color}</div>` : ''}
       </td>
       <td style="font-size:12px;color:var(--tx2);white-space:nowrap">${m.spec||'—'}</td>
-      <td class="r">
-        <span class="big">${m.perPair}</span><span class="utag">${m.unit}</span>
+      <td class="r pp-cell">
+        <div class="pp-wrap">
+          <input class="pp-inp" type="number" step="any" min="0"
+            value="${m.perPair}"
+            data-idx="${i}"
+            onchange="updPerPair(${i}, this.value)"
+            title="Click to edit per pair usage">
+          <span class="utag">${m.unit}</span>
+        </div>
         <div class="sub">/pair</div>
       </td>
       <td class="r">
         <span class="big">${FMTI(qty)}</span>
         <div class="sub">pairs</div>
       </td>
-      <td class="r">
+      <td class="r" id="tot-cell-${i}">
         <span class="big">${FMT(tot,dec)}</span><span class="utag">${m.unit}</span>
       </td>
     </tr>`;
@@ -1009,6 +1040,49 @@ function updQty(i, v) {
   if (!S) return;
   S.colors[i].qty = Math.max(0, parseInt(v)||0);
   render();
+}
+
+function updPerPair(i, val) {
+  if (!S) return;
+  const v = parseFloat(val);
+  if (isNaN(v) || v < 0) return;
+  S.bom.mats[i].perPair = v;
+
+  // Update just this row total — no full re-render (avoids losing input focus)
+  const m   = S.bom.mats[i];
+  const qty = applicableQty(m.cfg);
+  const tot = qty * v;
+  const dec = m.unit === 'SF' ? 2 : 4;
+  const totCell = document.getElementById(`tot-cell-${i}`);
+  if (totCell) totCell.innerHTML =
+    `<span class="big">${FMT(tot,dec)}</span><span class="utag">${m.unit}</span>`;
+
+  // Mark input as manually edited
+  const inp = document.querySelector(`.pp-inp[data-idx="${i}"]`);
+  if (inp) inp.classList.add('modified');
+
+  // Recalculate footer + stat totals
+  const byUnit = {}, unitArr = {};
+  S.bom.mats.forEach(m2 => {
+    const q = applicableQty(m2.cfg);
+    const t = q * m2.perPair;
+    byUnit[m2.unit]  = (byUnit[m2.unit]||0) + t;
+    if (!unitArr[m2.unit]) unitArr[m2.unit] = [];
+    unitArr[m2.unit].push(t);
+  });
+  const footCells = Object.entries(unitArr)
+    .map(([u, arr]) => `<strong>${FMT(arr.reduce((s,x)=>s+x,0), u==='SF'?2:4)} ${u}</strong>`)
+    .join(' &nbsp;·&nbsp; ');
+  const tfoot = document.getElementById('mat-tfoot');
+  if (tfoot) tfoot.innerHTML =
+    `<tr><td colspan="6" style="color:var(--tx2);font-size:11px">TOTAL BY UNIT</td>
+     <td colspan="3" class="r">${footCells}</td></tr>`;
+
+  // Update stat cards if they have IDs
+  const sfEl = document.getElementById('stat-sf');
+  const m2El = document.getElementById('stat-m2');
+  if (sfEl) sfEl.textContent = FMT(byUnit['SF']||0, 1);
+  if (m2El) m2El.textContent = FMT((byUnit['m2']||0)+(byUnit['M']||0), 3);
 }
 
 // ═══════════════════════ ACTIONS ═══════════════════════
@@ -1934,13 +2008,16 @@ function runFromData(poData, bomData) {
         // PRIORITY: if ZH name ends with "PU" or "PVC" → non-leather, regardless of EN keywords
         const nameLC = (matName + ' ' + engName).toLowerCase().replace(/\n/g,'');
         // Non-leather: ZH name explicitly ends/contains PU, PVC, fabric terms
+        const isPVC = /pvc/i.test(matName);
         const isDefinitelyNonLeather =
           /pu[（(（）)）]|pu$/i.test(matName) ||
           /\bpu\b/.test(matName.toLowerCase()) ||
-          /pvc/.test(matName.toLowerCase()) ||
+          isPVC ||
           /无纺|织布|绒面革|纤维革/.test(matName) ||
           /faux suede|micro suede|water.?based|synthetic|non.?woven/i.test(engName);
-        const isRope = /麻绳|麻|rope|cord|jute|straw|草|藤/.test(nameLC);
+        const isRope = /麻绳|麻绳|rope|cord|jute|straw|草|藤/.test(nameLC);
+        const isCork = /软木|cork|liège/i.test(nameLC);  // Cork = natural material, unit SF
+        const isLeatherLike = isLeather || isCork;  // Cork behaves like leather (SF column)
         const isLeather = !isDefinitelyNonLeather && !isRope && (
           /牛皮|羊皮|猪皮|反绒皮|绒皮|马毛|小牛|羊羔|羊京皮|山羊皮|绵羊皮|牛反绒|牛反毛|牛京皮/.test(matName) ||
           (/\b(calf|nubuck|buffalo|haircalf|sheepskin|cowhide|pigskin|goatskin|lambskin)\b/.test(nameLC)) ||
@@ -1950,10 +2027,16 @@ function runFromData(poData, bomData) {
           (/\bnappa\b/.test(nameLC) && !isDefinitelyNonLeather)
         );
         if (isRope) {
-          // Rope/jute: unit from spec (M or yd), use sfTgt as length
-          perPair = sfTgt || yVal || sfVal;
-          unit = m.unit || 'M';
-        } else if (isLeather) {
+          // Rope/jute: can be IN (inch), M, or yd — use Y/对 if available, else sfTgt
+          perPair = yVal || sfTgt || sfVal;
+          // Detect unit from spec field or AI-provided unit
+          const specLC = (m.spec||'').toLowerCase();
+          if (/in|inch/i.test(specLC) || /in|inch/i.test(m.unit||'')) {
+            unit = 'IN';
+          } else {
+            unit = m.unit || 'M';
+          }
+        } else if (isLeatherLike) {
           // Da thật: lấy cột SF/对
           if (sfVal)      { perPair = sfVal; unit = 'SF'; }
           else if (sfTgt) { perPair = sfTgt; unit = 'SF'; }
@@ -1961,14 +2044,15 @@ function runFromData(poData, bomData) {
         } else {
           // PU/PVC/Fabric/Lining: lấy cột Y/对 (m2/yd)
           const aiPerPair = parseFloat(m.perPair) || 0;
+          const defaultUnit = isPVC ? 'M' : (m.unit || 'm2');
           if (yVal) {
-            perPair = yVal; unit = m.unit || 'm2';
+            perPair = yVal; unit = defaultUnit;
           } else if (aiPerPair && sfTgt && aiPerPair < sfTgt) {
             // AI đã chọn đúng (giá trị nhỏ hơn sfTarget = Y/对), dùng luôn
-            perPair = aiPerPair; unit = m.unit || 'm2';
+            perPair = aiPerPair; unit = defaultUnit;
           } else if (aiPerPair && !sfTgt) {
             // Không có sfTarget để so sánh, tin vào AI
-            perPair = aiPerPair; unit = m.unit || 'm2';
+            perPair = aiPerPair; unit = defaultUnit;
           } else if (sfTgt) {
             // Fallback: AI chỉ có sfTarget — dùng nhưng báo có thể sai
             perPair = sfTgt; unit = 'SF';
