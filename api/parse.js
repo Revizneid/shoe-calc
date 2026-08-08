@@ -31,7 +31,7 @@ Trích xuất và trả về DUY NHẤT một JSON object. Không giải thích,
     "model":   "model code if present",
     "mats": [
       {
-        "cfg":       "config/配法 e.g. '1' or '2+3' — repeat for each row if rowspan",
+        "cfg":       "config/配法 e.g. '1' or '2+3' or '1--9' (range) — repeat for each row if rowspan, preserve range notation as-is",
         "part":      "part name Chinese (部位名称)",
         "matName":   "FULL material name — keep Chinese AND English e.g. '斯普伦多牛皮/SPLENDOR CALF'",
         "engName":   "",
@@ -60,7 +60,7 @@ QUY TẮC perPair (BOM — 3 cột: 目标用量SF | SF/对 | Y/对):
 - Fallback nếu cột ưu tiên trống: dùng 目标用量SF, unit=SF
 - Điền đúng sfTarget/perPairSF/perPairY từng cột (null nếu trống)
 
-QUY TẮC cfg: rowspan → lặp lại cfg cho từng hàng con.
+QUY TẮC cfg: rowspan → lặp lại cfg cho từng hàng. '1--9' và '1-9' là range notation (màu 1 đến 9), giữ nguyên.
 Chỉ trả hàng có matName và perPair > 0. JSON thuần, không backtick.`;
 
 // ── Prompt chỉ đọc PO (dùng cho Mistral call 1) ──────────────────────────────
@@ -132,7 +132,7 @@ Trả về DUY NHẤT JSON sau. Không giải thích, không markdown, không ba
   "model":   "model code (型体编号)",
   "mats": [
     {
-      "cfg":       "配法 e.g. '1' or '2+3' — lặp lại nếu rowspan",
+      "cfg":       "配法 e.g. '1' or '2+3' or '1--9' (= màu 1 đến 9) — lặp lại nếu rowspan, giữ nguyên ký hiệu range",
       "part":      "部位名称 (Chinese)",
       "matName":   "材料名称+颜色 — giữ nguyên Chinese AND English e.g. '斯普伦多牛皮/SPLENDOR CALF'",
       "engName":   "",
@@ -169,9 +169,13 @@ BƯỚC 3 — Kiểm tra logic:
 Cột nào trống/gạch ngang/dấu '-' → null.
 ĐỌC SỐ CẨN THẬN: 0.026 ≠ 0.0264. Đọc đúng từng chữ số.
 
-QUY TẮC chọn perPair:
+QUY TẮC chọn perPair & unit:
 - DA THẬT (牛皮,羊皮,猪皮,反绒,绒皮,马毛,羊京皮,nappa,suede,calf,leather): perPair=perPairSF, unit=SF
 - PHI DA (PU,PVC,布,纤维,无纺,绒面革,lining): perPair=perPairY, unit=m2
+- PVC đặc biệt: unit=M (mét dài), không phải m2
+- 麻绳/Jute/Rope: perPair=perPairY (số lớn như 5.08), unit theo spec (IN nếu spec ghi MM×MM hoặc spec nhỏ, M nếu dài)
+  Ví dụ: "10*3MM 183IN" → unit=IN, perPair=5.0833
+- 软木/Cork (FSC软木,真软木): perPair=perPairSF hoặc perPairY, unit=SF
 - Fallback nếu cột ưu tiên null: dùng sfTarget, unit=SF
 - Chỉ trả hàng có matName và perPair > 0.
 JSON thuần, không backtick.`;
