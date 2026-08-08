@@ -2016,9 +2016,8 @@ function runFromData(poData, bomData) {
           /无纺|织布|绒面革|纤维革/.test(matName) ||
           /faux suede|micro suede|water.?based|synthetic|non.?woven/i.test(engName);
         const isRope = /麻绳|麻绳|rope|cord|jute|straw|草|藤/.test(nameLC);
-        const isCork = /软木|cork|liège/i.test(nameLC);  // Cork = natural material, unit SF
-        const isLeatherLike = isLeather || isCork;  // Cork behaves like leather (SF column)
-        const isLeather = !isDefinitelyNonLeather && !isRope && (
+        const isCork = /软木|cork|liège/i.test(nameLC);
+        const isLeather = !isDefinitelyNonLeather && !isRope && !isCork && (
           /牛皮|羊皮|猪皮|反绒皮|绒皮|马毛|小牛|羊羔|羊京皮|山羊皮|绵羊皮|牛反绒|牛反毛|牛京皮/.test(matName) ||
           (/\b(calf|nubuck|buffalo|haircalf|sheepskin|cowhide|pigskin|goatskin|lambskin)\b/.test(nameLC)) ||
           (/\bleather\b/.test(nameLC) && !/synthetic|faux|pu\b|pvc/.test(nameLC)) ||
@@ -2026,6 +2025,7 @@ function runFromData(poData, bomData) {
           (/\bkid\b/.test(nameLC) && !/fabric|lining/.test(nameLC)) ||
           (/\bnappa\b/.test(nameLC) && !isDefinitelyNonLeather)
         );
+        const isLeatherLike = isLeather || isCork;  // Cork behaves like leather (SF column)
         if (isRope) {
           // Rope/jute: can be IN (inch), M, or yd — use Y/对 if available, else sfTgt
           perPair = yVal || sfTgt || sfVal;
